@@ -1,8 +1,33 @@
 #!/bin/awk -f
-
+#This script annotates the sites identified by Sprime (i.e. in the .score file)
+# with columns for matches, mismatches, or absence from the genotypes of
+# archaic individuals and groups.
+#The inputs (in order) are:
+# 1) A metadata file indicating which samples belong to which archaic group
+#    Note: The metadata file must have a header that includes columns named
+#     Sample and Region, where Sample is the sample ID, and Region is the
+#     group (e.g. Neandertal, Denisovan)
+# 2) VCF records corresponding *only* to the sites identified by Sprime for
+#    the archaic samples of interest
+# 3) The Sprime .score file
+#For now, we hard-code both the expected column names and the expected
+# archaic group names ("Neandertal" and "Denisovan"), as well as the archaic
+# matching part (inasmuch as we expect 3 Neandertals and 1 Denisovan with
+# particular sample IDs: AltaiNeandertal, Vindija33.19, Chagyrskaya-Phalanx,
+# and Denisovan
+#Options:
+# spop: (required) Name of the Sprime target population (i.e. not the outgroup)
+#                  This value is only used to make a unique Tract ID column.
 BEGIN{
    FS="\t";
    OFS=FS;
+   if (length(spop) == 0) {
+      print "spop variable is missing, please set it." > "/dev/stderr";
+      print "spop is the name of the Sprime target population" > "/dev/stderr";
+      print "i.e. the non-outgroup population in the Sprime run" > "/dev/stderr";
+      print "It is used as a prefix for a unique tract identifier" > "/dev/stderr";
+      exit 2;
+   };
    filenum=0;
    PROCINFO["sorted_in"]="@ind_num_asc";
 }
@@ -67,9 +92,10 @@ filenum==3&&FNR==1{
    for (i=1; i<=NF; i++) {
       sprimecols[$i]=i;
    };
-   print $0, "NeandertalMatch", "DenisovanMatch", "NeandertalAlleles", "DenisovanAlleles", "AltaiMatch", "VindijaMatch", "ChagyrskayaMatch";
+   print $0, "TractID", "NeandertalMatch", "DenisovanMatch", "NeandertalAlleles", "DenisovanAlleles", "AltaiMatch", "VindijaMatch", "ChagyrskayaMatch";
 }
 filenum==3&&FNR>1{
+   tractid=spop"_"$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"];
    sitekey=$sprimecols["CHROM"]":"$sprimecols["POS"];
    split($sprimecols["ALT"], alleles, ",");
    alleles[0]=$sprimecols["REF"];
@@ -128,5 +154,5 @@ filenum==3&&FNR>1{
          };
       };
    };
-   print $0, Neandertal, Denisovan, Neandertalallelestr, Denisovanallelestr, Altai, Vindija, Chagyrskaya;
+   print $0, tractid, Neandertal, Denisovan, Neandertalallelestr, Denisovanallelestr, Altai, Vindija, Chagyrskaya;
 }

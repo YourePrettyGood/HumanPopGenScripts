@@ -8,18 +8,29 @@
 # frequencies and take the median AAF across sites in a tract as the
 # tract frequency.
 #Options:
+# spop:   (required) The name of the populations the Sprime tracts came from
 # pop:    (required) The name of the populations the genotypes belong to
 # header: (optional) A flag indicating whether or not to print the header
 #                    line (default: don't print header)
 #The "header" flag facilitates combining the results across chromosomes and
 # populations.
+#Added the spop variable to enable simple concatenation of outputs across
+# S' runs using different sample sets so that tracts are uniquely labeled.
 BEGIN{
    FS="\t";
    OFS=FS;
    filenum=0;
    if (length(pop) == 0) {
       print "Missing pop variable, please set it." > "/dev/stderr";
+      print "pop is the name of the query population" > "/dev/stderr";
+      print "i.e. the source of the genotypes" > "/dev/stderr";
       exit 2;
+   };
+   if (length(spop) == 0) {
+      print "Missing spop variable, please set it." > "/dev/stderr";
+      print "spop is the name of the Sprime target population" > "/dev/stderr";
+      print "i.e. the non-outgroup population passed to Sprime" > "/dev/stderr";
+      exit 3;
    };
    if (length(header) > 0) {
       print "CHROM", "POS", "TractID", "ArchaicAlleleCount", "TotalAlleleCount", "ArchaicAlleleFrequency", "Population";
@@ -39,9 +50,9 @@ filenum==1&&FNR==1{
 # of the putatively archaic haplotype as the keys, and the tract ID as the
 # value:
 filenum==1&&FNR>1{
-   tract[$sprimecols["CHROM"]":"$sprimecols["POS"],$sprimecols["ALLELE"]]=$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"];
+   tract[$sprimecols["CHROM"]":"$sprimecols["POS"],$sprimecols["ALLELE"]]=spop"_"$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"];
    if (length(debug) > 0) {
-      print $sprimecols["CHROM"]":"$sprimecols["POS"]","$sprimecols["ALLELE"]" => "$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"] > "/dev/stderr";
+      print $sprimecols["CHROM"]":"$sprimecols["POS"]","$sprimecols["ALLELE"]" => "spop"_"$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"] > "/dev/stderr";
    };
 }
 #The second file is the output of bcftools query -H -f '%CHROM:%POS[\t%GT]\n'

@@ -1,5 +1,16 @@
 #!/bin/awk -f
 #The filename parsing is custom for the joint genotyping CVCM files
+#Required arguments:
+# prefix:        Prefix of the filename prior to the dbSNP version
+#                (I used "PIB92_SD_hs37d5_SNP_VQSR99.5_INDEL_VQSR99.0_dbSNP")
+# suffix:        Suffix of the filename after the population label
+#                (I used "_CVCM.variant_calling_summary_metrics")
+# intermediate1: String between dbSNP version and subsampling ID
+#                (I used "_VQSRpass_")
+# intermediate2: String between subsampling ID and chromosome number
+#                (I used "_chr")
+# intermediate3: String between chromosome number and localization of site
+#                (I used "_")
 BEGIN{
    FS="\t";
    OFS=FS;
