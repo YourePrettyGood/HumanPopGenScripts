@@ -88,6 +88,22 @@ Filtering down to only these sites reduces the noise introduced
 to the admixfrog HMM. As per an e-mail with Ben Peter, this was
 the procedure used for [Hajdinjak et al. 2021 Nature](https://doi.org/10.1038/s41586-021-03335-3).
 
+### `simpleRLE.awk`
+
+This script takes the posterior decoding from admixfrog (the .bin.xz file)
+and performs a dirt-simple run-length encoding of the posterior decoded
+state sequence. This can serve as an input to visualize the discretized
+patterns of ancestry across chromosomes. The output includes one line per
+tract of the same state and includes the coordinates of the tract in
+three different coordinate spaces: SNP space ("id_*"), genetic map space
+("map_*"), and physical/assembly space ("pos_*").
+
+Usage:
+
+```bash
+xz -dc [path to admixfrog output].bin.xz | simpleRLE.awk | xz -c > [path to admixfrog output].crle.xz
+```
+
 <a name="admixtools" />
 
 ## ADMIXTOOLS

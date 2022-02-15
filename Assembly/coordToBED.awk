@@ -16,16 +16,20 @@ BEGIN{
    qname=$15;
    pident=$7;
    strand=$13=="-1"?"-":"+";
+   rlen=$8;
+   qlen=$9;
    if (length(flip)>0) {
-      astart=$3-1;
-      aend=$4;
-      rlen=$8;
-      print qname, astart, aend, "QueryName="rname";QueryLength="rlen, pident, strand;
+      if (strand == "-") {
+         astart=$4-1;
+         aend=$3;
+      } else {
+         astart=$3-1;
+         aend=$4;
+      };
+      print qname, astart, aend, "QueryName="rname";QueryLength="rlen";RefLength="qlen, pident, strand;
    } else {
       astart=$1-1;
       aend=$2;
-      qlen=$9;
-      print rname, astart, aend, "QueryName="qname";QueryLength="qlen, pident, strand;
-#      print $14, $1-1, $2, "QueryName="$15";QueryLength="$9, $7, $13=="-1"?"-":"+";
+      print rname, astart, aend, "QueryName="qname";QueryLength="qlen";RefLength="rlen, pident, strand;
    };
 }
