@@ -1,5 +1,24 @@
 #!/bin/awk -f
+#This script calculates population-specific allele counts given a
+# metadata file and a VCF.
+#The idea is that these frequencies are a precursor to identifying
+# shared and population-private variants.
 #
+#The first input file should be a metadata file containing at a minimum
+# columns for sample ID and population ID.
+#Specify the names of these columns using the `idcol` and `metacol`
+# arguments, respectively.
+#The second input file is the VCF you want to process.
+#
+#Output is similar to the first five columns of a VCF, then a sequence
+# of AC and AN columns for each population. The AC columns are
+# populated by a comma-separated list of counts of each allele
+# in the order they appear (i.e. REF,ALT[1],ALT[2],ALT[3],...)
+#
+#The `missinghomref` option treats missing genotypes as homozygous
+# reference calls -- not ideal, but it's a somewhat common assumption.
+#
+#Changelog:
 #Added an option to coerce missing genotypes to homozygous reference
 BEGIN{
    FS="\t";

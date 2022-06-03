@@ -12,6 +12,11 @@
 # pop:    (required) The name of the populations the genotypes belong to
 # header: (optional) A flag indicating whether or not to print the header
 #                    line (default: don't print header)
+# allele: (optional) A flag indicating whether or not to print a column of
+#                    the archaic allele (default: don't print arc allele)
+# all:    (optional) A flag indicating whether or not to output all sites
+#                    including those with archaic AF of 0
+#                    (default: only print sites with arc AF > 0)
 #The "header" flag facilitates combining the results across chromosomes and
 # populations.
 #Added the spop variable to enable simple concatenation of outputs across
@@ -33,7 +38,11 @@ BEGIN{
       exit 3;
    };
    if (length(header) > 0) {
-      print "CHROM", "POS", "TractID", "ArchaicAlleleCount", "TotalAlleleCount", "ArchaicAlleleFrequency", "Population";
+      if (length(allele) > 0) {
+         print "CHROM", "POS", "TractID", "ArchaicAllele", "ArchaicAlleleCount", "TotalAlleleCount", "ArchaicAlleleFrequency", "Population";
+      } else {
+         print "CHROM", "POS", "TractID", "ArchaicAlleleCount", "TotalAlleleCount", "ArchaicAlleleFrequency", "Population";
+      };
    };
 }
 #Simple way to enable detection of more than 2 input files:
@@ -54,6 +63,9 @@ filenum==1&&FNR>1{
    if (length(debug) > 0) {
       print $sprimecols["CHROM"]":"$sprimecols["POS"]","$sprimecols["ALLELE"]" => "spop"_"$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"] > "/dev/stderr";
    };
+   split($sprimecols["ALT"], sprimealleles, ",");
+   sprimealleles[0]=$sprimecols["REF"];
+   alleles[$sprimecols["CHROM"]":"$sprimecols["POS"]]=sprimealleles[$sprimecols["ALLELE"]+0];
 }
 #The second file is the output of bcftools query -H -f '%CHROM:%POS[\t%GT]\n'
 # so we trim off the prefixed "# " of the header line, and then removing
@@ -76,7 +88,7 @@ filenum==2&&FNR>1{
    for (i=2; i<=NF; i++) {
       ploidy=split($i, gt, "[/|]");
       for (j=1; j<=ploidy; j++) {
-         AF[gt[j]]++;
+         AC[gt[j]]++;
          AN++;
          if (($1,gt[j]) in tract) {
             if (arcallele >= 0 && gt[j] != arcallele) {
@@ -92,9 +104,19 @@ filenum==2&&FNR>1{
    };
    split($1, chrompos, ":");
    if (arcallele >= 0) {
-      print chrompos[1], chrompos[2], tractid, AF[arcallele], AN, AF[arcallele]/AN, pop;
+      if (length(allele) > 0) {
+         print chrompos[1], chrompos[2], tractid, alleles[$1], AC[arcallele], AN, AC[arcallele]/AN, pop;
+      } else {
+         print chrompos[1], chrompos[2], tractid, AC[arcallele], AN, AC[arcallele]/AN, pop;
+      };
    } else {
-#      print chrompos[1], chrompos[2], "NA", 0, AN, 0.0, pop;
+      if (length(all) > 0) {
+         if (length(allele) > 0) {
+            print chrompos[1], chrompos[2], "NA", "NA", 0, AN, 0.0, pop;
+         } else {
+            print chrompos[1], chrompos[2], "NA", 0, AN, 0.0, pop;
+         };
+      };
    };
-   delete AF;
+   delete AC;
 }

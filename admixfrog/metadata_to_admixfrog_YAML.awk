@@ -1,5 +1,41 @@
 #!/bin/awk -f
-
+#This script takes a metadata file and an indication of the parental
+# population samples and outgroup sample, and generates an appropriate
+# YAML configuration file for Ben Peter's admixfrog.
+#
+#Input arguments:
+# idcol:         (required) Name of the sample ID column in the metadata file
+# metacol:       (required) Name of the population ID column in the metadata
+#                file
+# neandertal:    (optional) Comma-separated list of Neandertal sample IDs
+#                (default: AltaiNeandertal,Vindija33.19,Chagyrskaya-Phalanx)
+# denisovan:     (optional) Comma-separated list of Denisovan sample IDs
+#                (default: Denisova)
+# outgroup:      (optional) Comma-separated list of outgroup sample IDs
+#                (default: pan_troglodytes)
+# pseudohaploid: (optional) Comma-separated list of samples to treat as
+#                pseudohaploid
+#
+#Notes:
+# 1) If no outgroup is specified, the default outgroup is automatically
+#    added as pseudohaploid
+# 2) Certain population IDs are automatically recognized and converted
+#    to a short code, any other population IDs are skipped. The
+#    recognized populations are:
+#     Africa -> AFR
+#     America -> AMR
+#     CentralAsiaSiberia -> CAS
+#     Denisovan -> DEN
+#     EastAsia -> EAS
+#     Neandertal -> NEA
+#     Oceania_other -> OCE
+#     Oceania_PIB -> PIB
+#     Primates -> ANC
+#     SouthAsia -> SAS
+#     SoutheastAsia -> SEA
+#     WestEurasia -> EUR
+#Thus, you'll probably want to modify the code to include your
+# particular population IDs and short codes.
 BEGIN{
    FS="\t";
    OFS=FS;

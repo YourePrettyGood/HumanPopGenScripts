@@ -1,10 +1,12 @@
 #!/bin/awk -f
 #This script takes the unmerged BED of nucmer alignments and identifies
-# the best hit for each query contig/scaffold based on approximate
-# summed query coverage, and picks the best orientation based on
-# majority vote across the component alignments.
-#A better estimator of orientation probably would weight the votes by
-# the length of each alignment.
+# the best hit for each query contig/scaffold based on summed query
+# coverage, and picks the best orientation based on a weighted majority
+# vote across the component alignments, weighted by the alignment
+# length.
+#To instead output approximate summed query coverage, set `approxlen`
+#To pick the best orientation based on an unweighted majority vote
+# across the component alignments, set `unweightedorient`
 BEGIN{
    FS="\t";
    OFS=FS;

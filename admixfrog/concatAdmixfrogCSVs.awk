@@ -1,4 +1,9 @@
 #!/bin/awk -f
+#This script takes a series of (uncompressed) admixfrog CSVs and
+# concatenates them, only retaining columns in common with the first
+# CSV.
+#It's helpful when you have a bunch of per-chromosome CSVs that
+# you want to concatenate into a whole-genome CSV.
 BEGIN{
    FS=",";
    OFS=FS;

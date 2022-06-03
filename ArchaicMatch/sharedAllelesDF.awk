@@ -101,6 +101,14 @@ filenum==1&&FNR==1{
    for (i=1; i<=NF; i++) {
       cols[$i]=i;
    };
+   if (!(idcol in cols)) {
+      print "idcol="idcol" absent from metadata file, please check it" > "/dev/stderr";
+      exit 2;
+   };
+   if (!(metacol in cols)) {
+      print "metacol="metacol" absent from metadata file, please check it" > "/dev/stderr";
+      exit 3;
+   };
 }
 #Keep track of the metacol value for each sample:
 filenum==1&&FNR>1{
@@ -157,12 +165,13 @@ filenum==2&&!/^#/{
    for (i=1; i<=n_indivs; i++) {
       sampleregion=region[ids[indivorder[i]]];
       split($indivorder[i], sample, ":");
-      split(sample[1], gt, "[/|]");
+      ploidy=split(sample[1], gt, "[/|]");
       #Skip the individual if it's a target and the genotype is missing,
       # or if it's any other population and we aren't coercing missing
       # genotypes to homozygous reference.
       #If we are coercing missing genotypes to homozygous reference,
       # only do so if the population is not in the targets.
+      #Note: This doesn't properly handle partially missing genotypes.
       if (length(missinghomref) == 0 && gt[1] == ".") {
          continue;
       } else if (length(missinghomref) > 0 && gt[1] == "." && sampleregion in targets) {
@@ -171,7 +180,7 @@ filenum==2&&!/^#/{
          for (j in gt) {
             gt[j]="0";
          };
-      };;
+      };
       for (allele in gt) {
          samplealleles[gt[allele]]++;
       };
@@ -219,7 +228,6 @@ filenum==2&&!/^#/{
             };
             #Output a line with site, allele, and sample information:
             print $1, $2, $3, $4, $5, alleles[a], class, ids[indivorder[i]], sampleregion;
-#            persamplecount[ids[indivorder[i]],class]+=samplealleles[a];
             if (length(debug) > 0) {
                print "Query match count", $1, $2, $4, $5, ids[indivorder[i]], class, a, persamplecount[ids[indivorder[i]],class] > "/dev/stderr";
             };
@@ -232,14 +240,3 @@ filenum==2&&!/^#/{
       delete excludealleles;
    };
 }
-#END{
-#   for (i=1; i<=n_indivs; i++) {
-#      for (c=1; c<=n_classes; c++) {
-#         class=classes[c];
-#         if (!((ids[indivorder[i]],class) in persamplecount)) {
-#            persamplecount[ids[indivorder[i]],class]=0;
-#         };
-#         print ids[indivorder[i]], region[ids[indivorder[i]]], class, persamplecount[ids[indivorder[i]],class];
-#      };
-#   };
-#}
