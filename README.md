@@ -8,6 +8,7 @@ Scripts used for pre- and post-processing of various human population genomics a
 1. [Archaic allele matching](#archaicmatch)
 1. [De novo assembly](#assembly)
 1. [Private allele counting](#privatealleles)
+1. [Relatedness](#relatedness)
 1. [Sprime](#sprime)
 1. [SMC++](#smcpp)
 
@@ -309,6 +310,24 @@ samples, didn't filter sites based on population sharing. "subset" and
 done. For instance, if you wanted to compare allele counts fairly between
 populations, you would want to randomly subsample each population down
 to the sample number of individuals.
+
+<a name="relatedness" />
+
+## Relatedness
+
+### `extract_families_somalier.awk`
+
+This script recapitulates the trio identification criteria used by
+`somalier relate --infer`, but doesn't apply the family-joining algorithm
+that has serious trouble with our samples. It also outputs other info
+like Parent-Offspring and Full-Sibling pairs (and their relatedness
+estimator values) for troubleshooting odd pedigrees and incorrect
+branches inferred by --infer.
+
+The inputs are the `[somalier prefix].samples.tsv` file and the
+`[somalier prefix].pairs.tsv`, assuming you ran `somalier relate` with
+the `SOMALIER_REPORT_ALL_PAIRS` environment variable set to `1` and
+with the `--infer` flag.
 
 <a name="sprime" />
 
