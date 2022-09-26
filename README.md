@@ -8,6 +8,7 @@ Scripts used for pre- and post-processing of various human population genomics a
 1. [Archaic allele matching](#archaicmatch)
 1. [De novo assembly](#assembly)
 1. [Private allele counting](#privatealleles)
+1. [QC](#qc)
 1. [Relatedness](#relatedness)
 1. [Sprime](#sprime)
 1. [SMC++](#smcpp)
@@ -310,6 +311,47 @@ samples, didn't filter sites based on population sharing. "subset" and
 done. For instance, if you wanted to compare allele counts fairly between
 populations, you would want to randomly subsample each population down
 to the sample number of individuals.
+
+<a name="qc" />
+
+## QC
+
+### `combine_gtcheck.awk`
+
+This script tidies and combines the output from `bcftools gtcheck -u GT,GT -e 0`
+to indicate genotype discordance between all pairs of individuals in
+the query and target/"ground-truth" VCFs. The output is sorted in
+increasing order of the number of mismatches, so you may want to
+re-sort the output in order of the discordance rate (the 5th column)
+by piping to `sort -k5,5g`. This generates a rather large file, so
+you may want to filter the pairs further for only matching pairs,
+but the all pairs results can be useful to detect cryptic matching
+pairs, as genotype discordance appears to have a sharp elbow between
+matching and non-matching pairs.
+
+### `combine_smplstats.awk`
+
+This script tidies and combines the output from `bcftools +smpl-stats`
+across chromosomes. The primary outputs are counts and rates of the
+three genotype classes and missingness, though Ti/Tv ratio is also
+recalculated and output on a per-sample basis. Thus, the output is
+useful for plotting per-sample heterozygosity, missingness, and
+Ti/Tv ratio.
+
+### `combine_triostats.awk`
+
+This script tidies and combines the output from `bcftools +trio-stats`
+across chromosomes. The primary outputs are various estimates of the
+Mendelian error rate, normalized by either the number of valid trio
+sites (i.e. no trio member has missing genotype) or the number of
+valid trio sites with at least one non-REF allele (i.e. excluding
+sites where all trio members are homozygous REF). The calculated
+rates include a rate for all putative Mendelian errors, only
+homozygous Mendelian errors (i.e. child is homozygous for allele A
+and neither parent has allele A), only recurrent Mendelian errors
+(i.e. Mendelian errors where the putative error allele is found
+in other non-trio samples), and novel singletons (i.e. putative error
+alleles found exclusively in the child of a trio).
 
 <a name="relatedness" />
 
