@@ -3,6 +3,7 @@ Scripts used for pre- and post-processing of various human population genomics a
 
 ## Types of analyses:
 
+1. [metadata](#metadata)
 1. [admixfrog](#admixfrog)
 1. [ADMIXTOOLS input prep](#admixtools)
 1. [Archaic allele matching](#archaicmatch)
@@ -12,6 +13,71 @@ Scripts used for pre- and post-processing of various human population genomics a
 1. [Relatedness](#relatedness)
 1. [Sprime](#sprime)
 1. [SMC++](#smcpp)
+
+<a name="metadata" />
+
+## metadata
+
+### `excludeSamples.awk`
+
+This script takes in a file with sample IDs (one per line) to exclude
+(or include) from the second file. The second file must of course
+contain a column with sample IDs. The idea is that we can use this
+script to filter a list of sample IDs or a metadata file, especially
+if we simply maintain a file of sample IDs that are contaminated
+or to be pruned due to relatedness, or really anything.
+
+Arguments:
+
+`header`: (optional) Set to 1 if the second file has a header line
+
+`samplecolname`: (optional) Name of the column in the header line corresponding to sample IDs
+
+`negate`: (optional) Set to 1 if you want to *include* the IDs rather than exclude (the default is to exclude)
+
+### `selectSubsamples.awk`
+
+This script takes in a sample metadata file and extracts the sample
+IDs with the value(s) indicated in a particular column, possibly
+randomly subsampling the samples. This is frequently useful for
+extracting the samples belonging to a given population or extracting
+equal subsamples from multiple populations.
+
+Arguments:
+
+`idcol`: Column name for the sample ID column in the metadata file
+
+`samplecol`: (optional) Column name to stratify on for subsampling
+
+`subsample`: (optional) Group names to subsample from (comma-separated list)
+
+`sizes`: (optional) Size(s) of subsample(s) to take, must be either one value for all groups or a comma-separated list with one size per group
+
+`seed`: (optional) PRNG seed for reservoir sampling (default: 42)
+
+`selectcol`: (optional) Column name to stratify on for extraction (no subsampling performed with this option)
+
+`select`: (optional) Group names to extract from (comma-separated list)
+
+`subselectsize`: (optional) Size(s) of subsample(s) to take from groups in `select`
+
+If you don't want to perform any subsampling of groups and just extract
+all samples in that group, use `selectcol` and `select`. This is the
+equivalent of the following on an R data.frame in `tidyverse`:
+`df %>% filter([selectcol] %in% c([select])) %>% transmute([idcol])`
+
+If you want to subsample a set of groups, use `samplecol`, `subsample`,
+and `sizes` (as well as `seed` if you want). This is similar to the
+following on an R data.frame in `tidyverse`:
+`df %>% filter([samplecol] %in% c([subsample])) %>% group_by([samplecol]) %>% transmute(id=slice_sample(n=[sizes]))`
+
+It is possible to specify both `select` and `subsample`, in which case
+the groups in `select` are extracted and the groups in `subsample` are
+subsampled. `select` takes precedence if a group is present in both
+lists.
+
+Note that duplicated group names in the lists are not deduplicated, so
+the output sample ID list may contain duplicates.
 
 <a name="admixfrog" />
 
