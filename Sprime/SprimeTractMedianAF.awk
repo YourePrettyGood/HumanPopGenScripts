@@ -51,6 +51,6 @@ END{
       } else {
          median=(afs[n/2]+afs[(n/2)+1])/2;
       };
-      print tractchrom[qpoptract[2]], tractstart[qpoptract[2]]-1, tractend[qpoptract[2]], qpoptract[2], qpoptract[1], median, afs[1], afs[n];
+      print tractchrom[qpoptract[2]], tractstart[qpoptract[2]]-1, tractend[qpoptract[2]], qpoptract[2], qpoptract[1], median, afs[1], afs[n], n;
    };
 }

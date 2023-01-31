@@ -86,7 +86,7 @@ END{
    };
    printf "\n";
    for (t in tractchrom) {
-      printf "%s\t%s\t%s\t%s\t%i\t%i", tractchrom[t], tractstart[t], tractend[t], t, tractsnplen[t], tractscore[t];
+      printf "%s\t%s\t%s\t%s\t%i\t%s", tractchrom[t], tractstart[t], tractend[t], t, tractsnplen[t], tractscore[t];
       for (g=1; g<=ngroups; g++) {
          if (tractascertainable[t,groups[g]] > 0) {
             printf "\t%f\t%i", tractmatches[t,groups[g]]/tractascertainable[t,groups[g]], tractascertainable[t,groups[g]];

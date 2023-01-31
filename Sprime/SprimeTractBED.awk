@@ -11,6 +11,11 @@ BEGIN{
 # SprimePerSampleTracts.awk only contains lines where at least one allele
 # matches the S' archaic allele, so this script would only output archaic
 # tracts.
+#If phased was set for SprimePerSampleTracts.awk, then Individual is actually
+# Haplotype, but the code here basically stays the same. The only change is
+# that we record the number of archaic vs. non-archaic sites instead of
+# homozygous archaic vs. heterozygous sites.
+#Be sure to set phased for this script too in that case.
 !/^CHROM/{
    #tractorder keeps track of the input order of tract IDs so that the output
    # is always consistent with the input:
@@ -43,6 +48,8 @@ BEGIN{
       tracts[$3,"state",$2]=$4;
       tracts[$3,"homozygous",$2]=0;
       tracts[$3,"heterozygous",$2]=0;
+      tracts[$3,"archaic",$2]=0;
+      tracts[$3,"nonarchaic",$2]=0;
    #If the tract has been seen before, extend it and detect if the state
    # changed:
    } else {
@@ -73,7 +80,11 @@ END{
          if ((t,"start",i) in tracts) {
             #We're outputting something like BED6 format where the Name
             # column (#4) contains GFF3-like tags:
-            print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Individual="i";State="tracts[t,"state",i]";HomSprimeSites="tracts[t,"homozygous",i]";HetSprimeSites="tracts[t,"heterozygous",i], ".", ".";
+            if (length(phased) > 0) {
+               print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Haplotype="i";State="tracts[t,"state",i]";ArchaicSprimeSites="tracts[t,"archaic",i]";ModernSprimeSites="tracts[t,"nonarchaic",i], ".", ".";
+            } else {
+               print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Individual="i";State="tracts[t,"state",i]";HomSprimeSites="tracts[t,"homozygous",i]";HetSprimeSites="tracts[t,"heterozygous",i], ".", ".";
+            };
          };
       };
    };

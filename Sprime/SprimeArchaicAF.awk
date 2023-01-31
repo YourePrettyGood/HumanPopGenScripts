@@ -65,7 +65,11 @@ filenum==1&&FNR>1{
    };
    split($sprimecols["ALT"], sprimealleles, ",");
    sprimealleles[0]=$sprimecols["REF"];
+   if ($sprimecols["CHROM"]":"$sprimecols["POS"] in alleles) {
+      print "Collision error: At least two tracts appear to share the same position (" $sprimecols["CHROM"]":"$sprimecols["POS"] "), overwriting." > "/dev/stderr";
+   };
    alleles[$sprimecols["CHROM"]":"$sprimecols["POS"]]=sprimealleles[$sprimecols["ALLELE"]+0];
+   alleleindices[$sprimecols["CHROM"]":"$sprimecols["POS"]]=$sprimecols["ALLELE"]+0;
 }
 #The second file is the output of bcftools query -H -f '%CHROM:%POS[\t%GT]\n'
 # so we trim off the prefixed "# " of the header line, and then removing
@@ -109,12 +113,12 @@ filenum==2&&FNR>1{
       } else {
          print chrompos[1], chrompos[2], tractid, AC[arcallele], AN, AC[arcallele]/AN, pop;
       };
-   } else {
+   } else if ($1 in alleleindices) {
       if (length(all) > 0) {
          if (length(allele) > 0) {
-            print chrompos[1], chrompos[2], "NA", "NA", 0, AN, 0.0, pop;
+            print chrompos[1], chrompos[2], tract[$1,alleleindices[$1]], alleles[$1], 0, AN, 0.0, pop;
          } else {
-            print chrompos[1], chrompos[2], "NA", 0, AN, 0.0, pop;
+            print chrompos[1], chrompos[2], tract[$1,alleleindices[$1]], 0, AN, 0.0, pop;
          };
       };
    };

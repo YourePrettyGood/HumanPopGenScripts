@@ -7,6 +7,7 @@ Scripts used for pre- and post-processing of various human population genomics a
 1. [admixfrog](#admixfrog)
 1. [ADMIXTOOLS input prep](#admixtools)
 1. [Archaic allele matching](#archaicmatch)
+1. [ArchaicSeeker2.0](#archaicseeker)
 1. [De novo assembly](#assembly)
 1. [Private allele counting](#privatealleles)
 1. [QC](#qc)
@@ -205,6 +206,62 @@ Arguments:
 
 ## Archaic allele matching
 
+<a name="archaicseeker" />
+
+## ArchaicSeeker2.0
+
+### `segToSprimeScore.awk`
+
+This script takes in the `.seg` file output by ArchaicSeeker2 as
+well as the output of
+`bcftools query -H -f '%CHROM\t%POS\t%ID\t%REF\t%ALT[\t%GT]\n'`
+on the target/test population VCF to generate a file similar to
+the S' `.score` file, except this version generates a tract
+per haplotype, not per population.
+
+The idea is that the resulting `.score` file can be filtered
+and used to calculate match rates analogous to those of S'
+tracts.
+
+The `.seg` file should be sorted and passed as the first
+positional argument with a command substitution like this:
+
+```
+<(tail -n+2 [.seg file] | \
+   sort -k2,2V -k3,3n -k4,4n -k1,1V | \
+   cat <(head -n1 [.seg file]) -)
+```
+
+Required arguments:
+
+- `chrom`: Comma-separated list of chromosome names
+
+This argument can be used to generate chromosome-specific
+`.score` files just like S' produces, or combine them all
+into one file, etc.
+
+The output consists of 8 columns (analogous to the S' `.score` file):
+
+1. `CHROM`: Chromosome
+2. `POS`: 1-based position of variant (VCF-like)
+3. `ID`: Variant ID (VCF-like)
+4. `REF`: Reference allele (VCF-like)
+5. `ALT`: Alternative allele(s) (VCF-like)
+6. `SEGMENT`: String indexing the haplotype, conventionally `[sample ID]_[haplotype index]_[tract index]`
+7. `ALLELE`: Allele index of the haplotype at this site (VCF allele index, so non-negative integer)
+8. `ASSTATE`: "Best-matching state" of the ArchaicSeeker2.0 tract
+
+Note that `SEGMENT` and `ASSTATE` differ from the canonical S' `.score`
+format, as `SEGMENT` is no longer just the positive integer tract index
+but now needs to account for the haplotype, and `ASSTATE` replaces the
+`SCORE` column, as ArchaicSeeker2.0 does not produce a score, but the
+best-matching state may be useful downstream.
+
+Furthermore, note that the results are entirely contingent on the set
+of sites output by the `bcftools query` call, so if no site filtering
+is done by `bcftools query`, the output will include a line for every
+variant in each ArchaicSeeker2.0 tract, regardless of whether it is
+informative of archaic ancestry.
 
 <a name="assembly" />
 
@@ -441,6 +498,290 @@ with the `--infer` flag.
 
 ## S' (Sprime)
 
+### `archaicMatchSprime.awk`
+
+This script takes a metadata file for the archaics VCF,
+the archaics VCF subset to only S' sites, and the S'
+`.score` file in order to identify S' sites that match,
+mismatch, or are missing from each archaic. This is
+the first step toward calculating an archaic match rate
+for each S' tract and classifying each tract by it's
+origin.
+
+Note that we currently hard-code the expected column
+names and archaic group names in the metadata file,
+as well as the expected archaic sample IDs. The metadata
+file is expected to contain at a minimum two columns
+named `Sample` (with the sample ID) and `Region`
+(with the archaic hominin species name). These species
+names must be `Denisovan` and `Neandertal`. The archaic
+sample IDs are expected to be `AltaiNeandertal`,
+`Vindija33.19`, `Chagyrskaya-Phalanx`, and `Denisova`.
+
+The output consists of all the S' `.score` file columns plus
+8 additional columns:
+
+1. `TractID`: The "conventional" S' tract ID, i.e. `[S' target population]_[chromosome]_[SEGMENT]`
+2. `NeandertalMatch`: Categorical variable indicating match state to any Neanderthal
+3. `DenisovanMatch`: Categorical variable indicating match state to any Denisovan
+4. `NeandertalAlleles`: Comma-separated list of non-missing alleles in Neanderthals
+5. `DenisovanAlleles`: Comma-separated list of non-missing alleles in Denisovans
+6. `AltaiMatch`: Categorical variable indicating match state to the Altai Neanderthal
+7. `VindijaMatch`: Categorical variable indicating match state to the Vindija Neanderthal
+8. `ChagyrskayaMatch`: Categorical variable indicating match state to the Chagyrskaya Neanderthal
+
+The categorical variables mentioned here can take on three possible states:
+
+- `match`: The S' allele matches one of the alleles in the query archaic
+- `mismatch`: The query archaic genotype is not missing, and the S' allele does not match
+- `missing`: The query archaic genotype is missing
+
+The `*Alleles` columns may say `Unk` if all relevant genotypes are missing.
+
+The idea behind the group match (i.e. `NeandertalMatch` for now) is that we
+don't want to miss archaic alleles due to sampling limitations when
+calculating match rate, so assume that any allele across the three sequenced
+Neandertals could be found on an introgressed haplotype. This may inflate
+match rates somewhat, but also doesn't deflate them like only using Altai
+Neanderthal would.
+
+Required arguments:
+
+- `spop`: S' target population ID (used to construct the conventional S' tract ID)
+
+### `SprimeArchaicMatchRate.awk`
+
+This script takes the output of `archaicMatchSprime.awk`
+and summarizes the match indicators into match rates and
+counts of ascertainable ("Good") sites.
+
+For now, the groups for which match rates and "Good" site
+counts are determined are hard-coded in the `BEGIN` block
+as being all Neanderthals (`Neandertal`), the Altai Denisovan
+(`Denisovan`), and each of the Neanderthals individually
+(`Altai`, `Vindija`, and `Chagyrskaya`).
+
+The output consists of 6 core columns, and 2 columns per
+group, so 16 columns as of the writing of this README:
+
+1. `CHROM`: Chromosome
+2. `START`: 1-based S' tract start position
+3. `END`: 1-based S' tract end position
+4. `TractID`: S' tract ID
+5. `SNPLEN`: Number of S' variants in the tract
+6. `SCORE`: S' score of the tract
+
+The group columns are:
+
+7. `[NDAVC]matchrate`: Proportion of matching sites to ascertainable sites for group [NDAVC]
+8. `[NDAVC]good`: Number of ascertainable sites for group [NDAVC]
+
+This pair of columns is repeated for each value in `[NDAVC]`,
+representing the aforementioned 5 hard-coded group.s
+
+### `extract_Sprime_arcmatch_sites.awk`
+
+This script takes in the S' match rates file produced by
+`SprimeArchaicMatchRate.awk` as well as the S' archaic matches
+file produced by `archaicMatchSprime.awk` to identify a set
+of sites from each S' tract, optionally only those that
+match a given archaic hominin.
+
+This step is analogous to the first tag SNP filtering step in
+the adaptive introgression haplotype identification pipeline
+of [Gittelman et al. 2016 Current Biology](https://doi.org/10.1016/j.cub.2016.10.041)
+where only tag SNPs matching the Altai Neanderthal are selected
+for evaluation of r^2.
+
+The output of this script can be used to select SNPs within the
+target population (or superpopulation) for calculation of r^2.
+It is simply a 2-column TSV of `CHROM` and `POS`, as expected by
+the `-R` and `-T` arguments of the `bcftools` commands.
+
+Required arguments:
+
+- `source`: Which archaic origin to select tracts from (e.g. Neandertal or Denisovan)
+
+Optional arguments:
+
+- `criteria`: Which match rate criteria to use (i.e. Browning or PFR for now)
+- `only_matches`: Only output sites in source tracts that also match the source
+
+Criteria definitions:
+
+`Browning` (i.e. [Browning et al. 2018 Cell](https://doi.org/10.1016/j.cell.2018.02.031)):
+
+- At least 30 ascertainable sites in both Altai Neanderthal and Altai Denisovan
+- `Neandertal` if Altai Neanderthal match rate >= 0.6 and Altai Denisovan match rate <= 0.4
+- `Denisovan` if Altai Neanderthal match rate <= 0.3 and Altai Denisovan match rate >= 0.4
+
+`PFR` (my own ad hoc criteria):
+
+- At least 30 ascertainable sites in all 3 Neanderthals and the Altai Denisovan
+- `Neandertal` if combined Neanderthal match rate >= 0.3 and Altai Denisovan match rate <= 0.3
+- `Denisovan` if combined Neanderthal match rate <= 0.3 and Altai Denisovan match rate >= 0.3
+- `Ambiguous` if combined Neanderthal match rate >= 0.3 and Altai Denisovan match rate >= 0.3
+
+### `SprimeArchaicAF.awk`
+
+This script takes the S' `.score` file and the output of
+`bcftools query -H -f '%CHROM:%POS[\t%GT]\n'` on a VCF
+containing samples from a query population to calculate
+the frequency of the putative S' archaic allele at each
+site. Downstream, this can be processed into an estimate
+of the S' tract frequency in the query population.
+
+Note that you'll want to run `bcftools query` on the
+subset of sites within the S' `.score` file.
+
+The output consists of 7-8 columns:
+
+1. `CHROM`: Chromosome
+2. `POS`: 1-based position of the variant
+3. `TractID`: S' tract ID, typically taking the form `[S' target population]_[chromosome]_[SEGMENT]`
+4. `ArchaicAlleleCount`: Number of query population alleles matching the S' putative archaic allele
+5. `TotalAlleleCount`: Number of non-missing alleles in the query population
+6. `ArchaicAlleleFrequency`: The quotient of the previous two columns
+7. `Population`: ID of the query population
+
+An additional column may be inserted before the `ArchaicAlleleCount`
+column if the `allele` argument is set:
+
+- `ArchaicAllele`: The S' allele at the current site (not the allele index)
+
+This is mainly useful for diagnostics, as it breaks compatibility with
+downstream tools like `SprimeTractMedianAF.awk`.
+
+Required arguments:
+
+- `pop`: ID of the query population
+- `spop`: ID of the S' target population (this is used to construct the conventional S' TractID)
+
+Optional arguments:
+
+- `header`: Flag to indicate whether to output a header (default: no header)
+- `allele`: Flag to indicate whether to output the additional `ArchaicAllele` column as the fourth column (default: no additional column)
+
+### `SprimeTractMedianAF.awk`
+
+This script takes the output of `SprimeArchaicAF.awk` and
+estimates the frequency of the entire tract as the median
+of the site-wise frequencies along that tract. The minimum,
+maximum, and number of sites considered are also output
+as diagnostics for the breakdown of the tract haplotype
+across individuals. For instance, if min, median, and max
+are all similar then the tract haplotype hasn't broken
+down much, whereas if min is much smaller than median and
+max, the tract haplotype has likely broken down toward the
+edges, and if min and median are both smaller than max, then
+the tract haplotype is likely very fragmented. The median
+is a poor estimate when the number of sites is small, so
+beware those cases as well.
+
+The output consists of 9 columns:
+
+1. Chromosome
+2. Tract start position (0-based, BED-like)
+3. Tract end position (1-based, BED-like)
+4. TractID
+5. Query population (i.e. the population you want tract frequencies for)
+6. Median S' allele frequency
+7. Minimum S' allele frequency
+8. Maximum S' allele frequency
+9. Number of sites considered
+
+### `SprimePerSampleTracts.awk`
+
+This script takes the S' `.score` file and the output of
+`bcftools query -H -f '%CHROM:%POS[\t%GT]\n'` on the VCF of modern
+samples, and outputs the state of each sample at each site
+in terms of genotype match to the S' putative archaic allele.
+
+The idea is that you can run `bcftools query` on the subset of
+S' sites, and this script then projects the genotypes of each
+individual onto the S' tracts, polarizing the genotypes against
+the S' allele state.
+
+The output consists of four columns:
+
+1. `CHROM:POS`
+2. `Individual`: The sample ID of the individual
+3. `TractID`: The ID of the S' tract
+4. `TractState`: The polarized genotypic state at that site
+
+`Individual` may be replaced by `Haplotype` if the `phased` flag is set,
+in which case it represents a haplotype ID.
+
+`TractState` can take on up to three values:
+
+- `homozygous` (i.e. homozygous for the S' putative archaic allele)
+- `heterozygous` (i.e. heterozygous for the S' putative archaic allele)
+- `homozygous_nonarchaic` (i.e. homozygous for the putative modern allele)
+
+Arguments:
+
+- `allout`: A flag to include `homozygous_nonarchaic` sites in the output (default: only output `homozygous` and `heterozygous` sites)
+- `header`: A flag to output a header line (default: no header)
+- `phased`: A flag to indicate that the input is phased, so haplotypes should be analyzed instead of genotypes (default: analyze genotypes)
+
+### `SprimeTractBED.awk`
+
+This script takes the output of `SprimePerSampleTracts.awk`, which is
+a table of positions in S' tracts and their genotypic states in each
+individual, and outputs the boundaries of these tracts in each individual.
+In the genotypic case, a tract can be extended by a homozygous or
+heterozygous variant, so it may represent a composite of two haplotypes.
+
+The output is a BED6 file with semicolon-delimited tag-value pairs in the
+name column (column #6):
+
+- `TractID`: S' tract ID, formed as `[population]_[chromosome]_[SEGMENT]`
+- `Individual`: Sample/individual ID
+- `State`: Polarized genotypic state along the tract (one of the values in column 4 of the input, or "mixed" if that state changes within the tract)
+- `HomSprimeSites`: Count of sites with the "homozygous" state (i.e. homozygous for the putative archaic allele)
+- `HetSprimeSites`: Count of sites with the "heterozygous" state (i.e. heterozygous for the putative archaic allele)
+
+### `SprimeTractBEDtoLengths.awk`
+
+This is a very basic script that takes a file of sample IDs and
+the output of `SprimeTractBED.awk` to calculate an estimate of
+total archaic sequence per individual. Output columns are:
+
+1. `Chromosome`
+2. `Population`
+3. `TractID` (see above)
+4. `Sample` (i.e. Individual above, or Haplotype if `phased` is set)
+5. `TRACTLEN` (length of the tract)
+6. `ARCMOD` (number of heterozygous sites in the tract, i.e. HetSprimeSites)
+7. `ARCARC` (number of homozygous archaic sites in the tract, i.e. HomSprimeSites)
+
+Required arguments:
+
+- `pop`: Used as a prefix for the output TractID
+
+Optional arguments:
+
+- `header`: Output a header line
+- `phased`: Consider input as phased, and generate haplotypic tracts
+
+### `SprimeTractGeneList.awk`
+
+This script reformats the output of `bedtools intersect -wao`
+between a BED6 of S' tracts produced by `SprimeTractBED.awk`
+(fed to `bedtools intersect` as the `-a` argument) and a GFF3
+to indicate the set of features overlapping each S' tract.
+If multiple features overlap an S' tract, they are concatenated
+into a comma-separated list such that each S' tract has a single
+output record.
+
+Arguments:
+
+- `feature`: The GFF3 feature type (i.e. column 3) to check for overlaps (default: gene)
+- `tag`: The tag of the GFF3 feature to extract a name from (default: ID)
+- `trim`: Flag to trigger trimming of "[.][0-9]+(_[0-9]+)?$" from the end of the tag value
+
+So if you want the canonical gene names in the list rather than e.g.
+Ensembl gene IDs, set `tag` to `gene_name`.
 
 <a name="smcpp" />
 
