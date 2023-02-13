@@ -12,7 +12,7 @@ BEGIN{
    if (length(header) == 0) {
       header=0;
    };
-   if (length(samplecolname) == 0) {
+   if (length(samplecolname) == 0 && length(samplecol) == 0) {
       samplecol=1;
    };
    if (length(negate) == 0) {
