@@ -30,5 +30,6 @@ BEGIN{
 }
 #Add the S' target population and tract origin columns:
 !/^CHROM/{
+   $3=origin"."$3;
    print $0, pop, origin;
 }
