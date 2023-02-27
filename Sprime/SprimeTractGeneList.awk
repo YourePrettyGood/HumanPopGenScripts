@@ -18,6 +18,8 @@ BEGIN{
    if (length(feature) == 0) {
       feature="gene";
    };
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", trim);   
+   sub(/^[Nn][Oo]?$/, "0", trim);
    #Expected number of columns from the -a file:
    #CHROM, START, END, NAME, SCORE, STRAND
    FNF=6
@@ -46,7 +48,7 @@ BEGIN{
    for (i in tags) {
       split(tags[i], tagelems, "=");
       if (tagelems[1] == tag) {
-         if (length(trim) > 0) {
+         if (length(trim) > 0 && trim > 0) {
             sub("[.][0-9]+(_[0-9]+)?$", "", tagelems[2]);
          };
          if (tractid in genelist) {

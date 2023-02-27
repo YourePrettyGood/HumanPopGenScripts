@@ -28,8 +28,12 @@ BEGIN{
    #ARCARC is the count of sites homozygous for the archaic allele
    #ARC is the count of sites matching the archaic allele when phased
    #MOD is the count of sites not matching the archaic allele when phased
-   if (length(header) > 0) {
-      if (length(phased) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", header);   
+   sub(/^[Nn][Oo]?$/, "0", header);
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", phased);   
+   sub(/^[Nn][Oo]?$/, "0", phased);
+   if (length(header) > 0 && header > 0) {
+      if (length(phased) > 0 && phased > 0) {
          print "CHROM", "Population", "TractID", "Haplotype", "TRACTLEN", "MOD", "ARC";
       } else {
          print "CHROM", "Population", "TractID", "Sample", "TRACTLEN", "ARCMOD", "ARCARC";
@@ -76,7 +80,7 @@ END{
    for (tid in tracts) {
       for (id in ids) {
          if ((tid, id) in tractlen) {
-            if (length(phased) > 0) {
+            if (length(phased) > 0 && phased > 0) {
                print tractchrom[tid], pop, tid, id, tractlen[tid,id], tractmod[tid,id], tractarc[tid,id];
             } else {
                print tractchrom[tid], pop, tid, id, tractlen[tid,id], tracthet[tid,id], tracthom[tid,id];

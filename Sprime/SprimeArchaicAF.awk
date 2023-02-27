@@ -37,8 +37,14 @@ BEGIN{
       print "i.e. the non-outgroup population passed to Sprime" > "/dev/stderr";
       exit 3;
    };
-   if (length(header) > 0) {
-      if (length(allele) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", allele);   
+   sub(/^[Nn][Oo]?$/, "0", allele);
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", all);   
+   sub(/^[Nn][Oo]?$/, "0", all);
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", header);
+   sub(/^[Nn][Oo]?$/, "0", header);
+   if (length(header) > 0 && header > 0) {
+      if (length(allele) > 0 && allele > 0) {
          print "CHROM", "POS", "TractID", "ArchaicAllele", "ArchaicAlleleCount", "TotalAlleleCount", "ArchaicAlleleFrequency", "Population";
       } else {
          print "CHROM", "POS", "TractID", "ArchaicAlleleCount", "TotalAlleleCount", "ArchaicAlleleFrequency", "Population";
@@ -108,14 +114,14 @@ filenum==2&&FNR>1{
    };
    split($1, chrompos, ":");
    if (arcallele >= 0) {
-      if (length(allele) > 0) {
+      if (length(allele) > 0 && allele > 0) {
          print chrompos[1], chrompos[2], tractid, alleles[$1], AC[arcallele], AN, AC[arcallele]/AN, pop;
       } else {
          print chrompos[1], chrompos[2], tractid, AC[arcallele], AN, AC[arcallele]/AN, pop;
       };
    } else if ($1 in alleleindices) {
-      if (length(all) > 0) {
-         if (length(allele) > 0) {
+      if (length(all) > 0 && all > 0) {
+         if (length(allele) > 0 && allele > 0) {
             print chrompos[1], chrompos[2], tract[$1,alleleindices[$1]], alleles[$1], 0, AN, 0.0, pop;
          } else {
             print chrompos[1], chrompos[2], tract[$1,alleleindices[$1]], 0, AN, 0.0, pop;

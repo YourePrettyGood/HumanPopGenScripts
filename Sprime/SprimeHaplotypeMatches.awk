@@ -21,10 +21,14 @@ BEGIN{
    FS="\t";
    OFS=FS;
    filenum=0;
-   if (length(arconly) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", arconly);   
+   sub(/^[Nn][Oo]?$/, "0", arconly);
+   if (length(arconly) > 0 && arconly > 0) {
       print "Only outputting sites found by S'" > "/dev/stderr";
    };
-   if (length(header) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", header);   
+   sub(/^[Nn][Oo]?$/, "0", header);
+   if (length(header) > 0 && header > 0) {
       print "CHROM:POS", "Individual", "Haplotype", "TractID", "ArchaicState", "DenisovanAAC", "NeandertalAAC", "AlleleState";
    };
    #For now, we'll hard-code the map from archaic sample ID to group:

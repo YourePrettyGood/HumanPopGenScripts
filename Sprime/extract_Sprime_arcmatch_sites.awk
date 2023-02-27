@@ -45,6 +45,8 @@ BEGIN{
       print "Please specify an archaic source to select tracts from." >> "/dev/stderr";
       exit 2;
    };
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", only_matches);   
+   sub(/^[Nn][Oo]?$/, "0", only_matches);
    if (length(only_matches) == 0) {
       only_matches=0;
    };

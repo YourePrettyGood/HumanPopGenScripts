@@ -26,14 +26,20 @@ BEGIN{
    if (length(spop) > 0) {
       tidprefix=spop"_";
    };
-   if (length(allout) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", allout);   
+   sub(/^[Nn][Oo]?$/, "0", allout);
+   if (length(allout) > 0 && allout > 0) {
       print "Printing homozygous non-archaic sites too" > "/dev/stderr";
    };
-   if (length(phased) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", phased);   
+   sub(/^[Nn][Oo]?$/, "0", phased);
+   if (length(phased) > 0 && phased > 0) {
       print "Treating individuals as phased, outputting one line per haplotype variant" > "/dev/stderr";
    };
-   if (length(header) > 0) {
-      if (length(phased) > 0) {
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", header);   
+   sub(/^[Nn][Oo]?$/, "0", header);
+   if (length(header) > 0 && header > 0) {
+      if (length(phased) > 0 && phased > 0) {
          print "CHROM:POS", "Haplotype", "TractID", "TractState";
       } else {
          print "CHROM:POS", "Individual", "TractID", "TractState";
@@ -108,22 +114,22 @@ filenum==2&&FNR>1{
          };
          #If phased input was provided, output the tract state for each
          # haplotype:
-         if (length(phased) > 0) {
+         if (length(phased) > 0 && phased > 0) {
             #Only output the tract state if it matches the putative archaic
             # allele (per S') unless otherwise requested):
             if (arcmatch) {
                print $1, querycols[i]"_"j, tractid, "archaic";
-            } else if (length(allout) > 0) {
+            } else if (length(allout) > 0 && allout > 0) {
                print $1, querycols[i]"_"j, tractid, "nonarchaic";
             };
          };
       };
-      if (length(phased) == 0) {
+      if (length(phased) == 0 || phased < 1) {
          #Only output the tract state if at least one of the alleles matches
          # the putative archaic allele (per S'):
          if (arcmatch) {
             print $1, querycols[i], tractid, state;
-         } else if (length(allout) > 0) {
+         } else if (length(allout) > 0 && allout > 0) {
             print $1, querycols[i], tractid, "homozygous_nonarchaic";
          };
       };
