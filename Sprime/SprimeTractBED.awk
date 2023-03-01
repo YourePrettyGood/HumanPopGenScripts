@@ -3,6 +3,8 @@
 BEGIN{
    FS="\t";
    OFS=FS;
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", phased);
+   sub(/^[Nn][Oo]?$/, "0", phased);
 }
 #CHROM:POS\tIndividual\tTractID\tTractState
 #The input is the output of SprimePerSampleTracts.awk, which is a TSV of
@@ -54,7 +56,7 @@ BEGIN{
    #If the tract hasn't been seen before, add it to tracts with initial values:
    if (!(($3,"start",$2) in tracts)) {
       #Only start the tract at a site containing an archaic allele:
-      if ($4 != "homozygous_nonarchaic" && $4 != "nonarchaic") {
+      if ($4 != "homozygous_nonarchaic" && $4 != "nonarchaic" && $4 != "unphased") {
          if (length(debug) > 0 && debug > 1) {
             print "Initializing tract "$3" for individual "$2" at "$1" in state "$4 > "/dev/stderr";
          };
@@ -72,9 +74,9 @@ BEGIN{
       };
    #If the tract has been seen before, extend it and detect if the state
    # changed:
-   } else {
+   } else if ($4 != "unphased") {
       #Move the end of the tract if the current site contains an archaic allele:
-      if (pos > tracts[$3,"end",$2] && $4 != "homozygous_nonarchaic" && $4 != "nonarchaic") {
+      if (pos > tracts[$3,"end",$2]) {
          if ($4 != "homozygous_nonarchaic" && $4 != "nonarchaic") {
             if (length(debug) > 0 && debug > 1) {
                print "Extending tract "$3" for individual "$2" to "pos > "/dev/stderr";
@@ -108,7 +110,7 @@ END{
          if ((t,"start",i) in tracts) {
             #We're outputting something like BED6 format where the Name
             # column (#4) contains GFF3-like tags:
-            if (length(phased) > 0) {
+            if (length(phased) > 0 && phased > 0) {
                print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Haplotype="i";State="tracts[t,"state",i]";ArchaicSprimeSites="tracts[t,"archaic",i]";ModernSprimeSites="tracts[t,"nonarchaic",i]-tracts[t,"suffix",i], ".", ".";
             } else {
                print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Individual="i";State="tracts[t,"state",i]";HomSprimeSites="tracts[t,"homozygous",i]";HetSprimeSites="tracts[t,"heterozygous",i]";HomModernSites="tracts[t,"homozygous_nonarchaic",i]-tracts[t,"suffix",i], ".", ".";

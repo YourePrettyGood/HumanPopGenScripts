@@ -91,7 +91,7 @@ filenum==2&&FNR==1{
 # site:
 filenum==2&&FNR>1{
    for (i=2; i<=NF; i++) {
-      ploidy=split($i, gt, "[/|]");
+      ploidy=split($i, gt, "[/|]", alleledelims);
       #Skip sites not found in the Sprime .score file:
       if (!($1 in tractsites)) {
          continue;
@@ -99,7 +99,19 @@ filenum==2&&FNR>1{
       state="homozygous";
       arcmatch=0;
       tractid=tract[$1,tractsites[$1]];
+      #If phased input indicated but site isn't phased, output as
+      # state "unphased":
+      if (length(phased) > 0 && phased > 0 && alleledelims[1] == "/") {
+         for (j=1; j<=ploidy; j++) {
+            print $1, querycols[i]"_"j, tractid, "unphased";
+         };
+         continue;
+      };
       for (j=1; j<=ploidy; j++) {
+         #If phased input is provided, reset arcmatch for each allele:
+         if (length(phased) > 0 && phased > 0) {
+            arcmatch=0;
+         };
          #The only way for a site to be homozygous is for all alleles to match:
          if (j > 1 && state == "homozygous" && gt[j] != gt[j-1]) {
             state="heterozygous";

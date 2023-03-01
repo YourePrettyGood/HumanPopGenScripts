@@ -9,6 +9,8 @@
 #Arguments:
 # pop:    (required) Prefix for the tract ID to make it unique across Sprime
 #         runs
+# addpop: (optional) Flag indicating whether to add pop as a prefix to tract
+#         IDs -- default: Add population prefix (for backwards compatibility)
 # phased: (optional) Flag indicating whether or not the input was from
 #         phased genotypes
 # header: (optional) Flag indicating whether or not to output the header
@@ -23,6 +25,11 @@ BEGIN{
       print "pop is used as a prefix for the tract ID to make it unique" > "/dev/stderr";
       print "across Sprime runs" > "/dev/stderr";
       exit 2;
+   };
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", addpop);   
+   sub(/^[Nn][Oo]?$/, "0", addpop);
+   if (length(addpop) == 0) {
+      addpop=1;
    };
    #ARCMOD is the count of sites heterozygous for the archaic allele
    #ARCARC is the count of sites homozygous for the archaic allele
@@ -39,16 +46,29 @@ BEGIN{
          print "CHROM", "Population", "TractID", "Sample", "TRACTLEN", "ARCMOD", "ARCARC";
       };
    };
+   #We hard-code ploidy for haplotype IDs as diploid for now:
+   ploidy=2;
 }
 FNR==NR{
-   ids[$1]=++nindiv;
+   #Record the IDs of individuals or haplotypes for output ordering:
+   if (length(phased) > 0 && phased > 0) {
+      for (j=1; j<=ploidy; j++) {
+         ids[$1"_"j]=++nindiv;
+      };
+   } else {
+      ids[$1]=++nindiv;
+   };
 }
 FNR<NR{
    split($4, tags, ";");
    for (t in tags) {
       split(tags[t], elems, "=");
       if (elems[1] == "TractID") {
-         tractid=pop"_"elems[2];
+         if (addpop > 0) {
+            tractid=pop"_"elems[2];
+         } else {
+            tractid=elems[2];
+         };
       } else if (elems[1] == "Individual" || elems[1] == "Haplotype") {
          id=elems[2];
       } else if (elems[1] == "HomSprimeSites") {
