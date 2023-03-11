@@ -3,6 +3,11 @@
 BEGIN{
    FS="\t";
    OFS=FS;
+   #If max_gap is unset, default to a large number so we
+   # don't split tracts (for backwards compatibility):
+   if (length(max_gap) == 0) {
+      max_gap=1000000;
+   };
    sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", phased);
    sub(/^[Nn][Oo]?$/, "0", phased);
 }
@@ -44,6 +49,13 @@ BEGIN{
    split($1, poskey, ":");
    chrom=poskey[1];
    pos=poskey[2];
+   #In order to handle the possibility of breaking a projection into
+   # subregions, we keep track of the number of parts for the current
+   # projection:
+   if (!(($3,"parts",$2) in tracts)) {
+      tracts[$3,"parts",$2]=1;
+   };
+   part=tracts[$3,"parts",$2];
    #Keep track of the length of the nonarchaic prefixes and suffixes of each
    # archaic haplotype so that we can subtract them off the total site counts.
    # For example, consider a haploid tract NNNAAAANAAANNNNN
@@ -54,52 +66,57 @@ BEGIN{
    #The prefix doesn't actually get subtracted, since we reset the count of modern
    # sites to 0 upon encountering the first archaic site.
    #If the tract hasn't been seen before, add it to tracts with initial values:
-   if (!(($3,"start",$2) in tracts)) {
+   if (!(($3,"start"part,$2) in tracts)) {
       #Only start the tract at a site containing an archaic allele:
       if ($4 != "homozygous_nonarchaic" && $4 != "nonarchaic" && $4 != "unphased") {
          if (length(debug) > 0 && debug > 1) {
-            print "Initializing tract "$3" for individual "$2" at "$1" in state "$4 > "/dev/stderr";
+            print "Initializing tract "$3" part "part" for individual "$2" at "$1" in state "$4 > "/dev/stderr";
          };
-         tracts[$3,"chrom",$2]=chrom;
-         tracts[$3,"start",$2]=pos;
-         tracts[$3,"end",$2]=pos;
-         tracts[$3,"state",$2]=$4;
-         tracts[$3,"homozygous",$2]=0;
-         tracts[$3,"heterozygous",$2]=0;
-         tracts[$3,"homozygous_nonarchaic",$2]=0;
-         tracts[$3,"archaic",$2]=0;
-         tracts[$3,"nonarchaic",$2]=0;
+         tracts[$3,"chrom"part,$2]=chrom;
+         tracts[$3,"start"part,$2]=pos;
+         tracts[$3,"end"part,$2]=pos;
+         tracts[$3,"state"part,$2]=$4;
+         tracts[$3,"homozygous"part,$2]=0;
+         tracts[$3,"heterozygous"part,$2]=0;
+         tracts[$3,"homozygous_nonarchaic"part,$2]=0;
+         tracts[$3,"archaic"part,$2]=0;
+         tracts[$3,"nonarchaic"part,$2]=0;
       } else {
-         tracts[$3,"prefix",$2]++;
+         tracts[$3,"prefix"part,$2]++;
       };
    #If the tract has been seen before, extend it and detect if the state
    # changed:
    } else if ($4 != "unphased") {
       #Move the end of the tract if the current site contains an archaic allele:
-      if (pos > tracts[$3,"end",$2]) {
+      if (pos > tracts[$3,"end"part,$2]) {
          if ($4 != "homozygous_nonarchaic" && $4 != "nonarchaic") {
             if (length(debug) > 0 && debug > 1) {
-               print "Extending tract "$3" for individual "$2" to "pos > "/dev/stderr";
+               print "Extending tract "$3" part "part" for individual "$2" to "pos > "/dev/stderr";
             };
-            tracts[$3,"end",$2]=pos;
+            tracts[$3,"end"part,$2]=pos;
             #Reset the suffix to 0 every time an archaic allele is found:
-            tracts[$3,"suffix",$2]=0;
+            tracts[$3,"suffix"part,$2]=0;
          } else {
             #Extend the candidate suffix if no archaic allele is found:
-            tracts[$3,"suffix",$2]++;
+            tracts[$3,"suffix"part,$2]++;
          };
       };
       #Note cases where recombination events likely occurred:
-      if ($4 != tracts[$3,"state",$2] && tracts[$3,"state",$2] != "mixed") {
+      if ($4 != tracts[$3,"state"part,$2] && tracts[$3,"state"part,$2] != "mixed") {
          if (length(debug) > 0) {
-            print "Tract "$3" in individual "$2" had state "tracts[$3,"state",$2]" but is now "$4" at position "pos", so coercing to mixed" > "/dev/stderr";
+            print "Tract "$3" part "part" in individual "$2" had state "tracts[$3,"state"part,$2]" but is now "$4" at position "pos", so coercing to mixed" > "/dev/stderr";
          };
-         tracts[$3,"state",$2]="mixed";
+         tracts[$3,"state"part,$2]="mixed";
       };
    };
    #As a diagnostic for the "mixed" state, we keep track of the number of
    # sites in the tract that the individual had in each state:
-   tracts[$3,$4,$2]++;
+   tracts[$3,$4""part,$2]++;
+   #If the current tract has too long of a region of modern or homozygous
+   # modern sites, split here and start a new part:
+   if (tracts[$3,"suffix"part,$2] >= max_gap) {
+      tracts[$3,"parts",$2]++;
+   };
 }
 END{
    #Since we put indices as values in the tractorder and indivorder hashes,
@@ -107,13 +124,20 @@ END{
    PROCINFO["sorted_in"]="@val_num_asc";
    for (t in tractorder) {
       for (i in indivorder) {
-         if ((t,"start",i) in tracts) {
-            #We're outputting something like BED6 format where the Name
-            # column (#4) contains GFF3-like tags:
-            if (length(phased) > 0 && phased > 0) {
-               print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Haplotype="i";State="tracts[t,"state",i]";ArchaicSprimeSites="tracts[t,"archaic",i]";ModernSprimeSites="tracts[t,"nonarchaic",i]-tracts[t,"suffix",i], ".", ".";
-            } else {
-               print tracts[t,"chrom",i], tracts[t,"start",i]-1, tracts[t,"end",i], "TractID="t";Individual="i";State="tracts[t,"state",i]";HomSprimeSites="tracts[t,"homozygous",i]";HetSprimeSites="tracts[t,"heterozygous",i]";HomModernSites="tracts[t,"homozygous_nonarchaic",i]-tracts[t,"suffix",i], ".", ".";
+         for (p=1; p<=tracts[t,"parts",i]; p++) {
+            if ((t,"start"p,i) in tracts) {
+               #Check to make sure the tract isn't devoid of archaic sites:
+               arc_unphased=tracts[t,"homozygous"p,i]+tracts[t,"heterozygous"p,i];
+               arc_phased=tracts[t,"archaic"p,i];
+               if (arc_unphased > 0 || arc_phased > 0) {
+                  #We're outputting something like BED6 format where the Name
+                  # column (#4) contains GFF3-like tags:
+                  if (length(phased) > 0 && phased > 0) {
+                     print tracts[t,"chrom"p,i], tracts[t,"start"p,i]-1, tracts[t,"end"p,i], "TractID="t";Haplotype="i";State="tracts[t,"state"p,i]";ArchaicSprimeSites="tracts[t,"archaic"p,i]";ModernSprimeSites="tracts[t,"nonarchaic"p,i]-tracts[t,"suffix"p,i], ".", ".";
+                  } else {
+                     print tracts[t,"chrom"p,i], tracts[t,"start"p,i]-1, tracts[t,"end"p,i], "TractID="t";Individual="i";State="tracts[t,"state"p,i]";HomSprimeSites="tracts[t,"homozygous"p,i]";HetSprimeSites="tracts[t,"heterozygous"p,i]";HomModernSites="tracts[t,"homozygous_nonarchaic"p,i]-tracts[t,"suffix"p,i], ".", ".";
+                  };
+               };
             };
          };
       };
