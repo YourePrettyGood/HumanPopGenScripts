@@ -114,7 +114,7 @@ BEGIN{
    tracts[$3,$4""part,$2]++;
    #If the current tract has too long of a region of modern or homozygous
    # modern sites, split here and start a new part:
-   if (tracts[$3,"suffix"part,$2] >= max_gap) {
+   if (tracts[$3,"suffix"part,$2] > max_gap) {
       tracts[$3,"parts",$2]++;
    };
 }
