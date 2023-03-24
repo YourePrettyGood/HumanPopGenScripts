@@ -57,7 +57,7 @@ filenum==1&&FNR>1{
       tractindex[hapchrom]=1;
       tractcounts[hapchrom]++;
       #The TractID for ArchaicSeeker2 needs to include the haplotype ID:
-      tractid=tractcounts[hapchrom]"_"$segcols["ID"];
+      tractid=$segcols["Contig"]"_"tractcounts[hapchrom]"_"$segcols["ID"];
       #We use a slightly simpler key that's still unique to each tract:
       tractkey=hapchrom SUBSEP tractcounts[hapchrom];
       #Store the start, end, tract ID, and ArchaicSeeker2 HMM state:

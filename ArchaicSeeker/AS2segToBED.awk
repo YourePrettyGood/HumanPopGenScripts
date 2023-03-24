@@ -11,9 +11,21 @@
 #
 # Input files:
 #  1) ArchaicSeeker2 .seg file, sorted by region and *then* by haplotype
+#
+# Options:
+#  pop: (required) Name of the ArchaicSeeker2.0 target population (i.e. not
+#                  the outgroup)
+#                  This value is only used to make a unique Tract ID
 BEGIN{
    FS="\t";
    OFS=FS;
+   if (length(pop) == 0) {
+      print "pop variable is missing, please set it." > "/dev/stderr";
+      print "pop is the name of the ArchaicSeeker2.0 target population" > "/dev/stderr";
+      print "i.e. the non-outgroup population in the ArchaicSeeker2.0 run" > "/dev/stderr";
+      print "It is used as a prefix for a unique tract identifier" > "/dev/stderr";
+      exit 2;
+   };
 }
 NR==1{
    #Map column names to indices:
@@ -26,7 +38,7 @@ NR>1{
    hapchrom=$segcols["ID"] SUBSEP $segcols["Contig"];
    tractcounts[hapchrom]++;
    #The TractID for ArchaicSeeker2 needs to include the haplotype ID:
-   tractid=tractcounts[hapchrom]"_"$segcols["ID"];
+   tractid=pop"_"$segcols["Contig"]"_"tractcounts[hapchrom]"_"$segcols["ID"];
    #Store the start, end, tract ID, and ArchaicSeeker2 HMM state:
    tractstart=$segcols["Start(bp)"];
    tractend=$segcols["End(bp)"];
