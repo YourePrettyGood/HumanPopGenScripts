@@ -323,6 +323,78 @@ reliable when the aligned length is longer.
 
 ## Private allele counting
 
+### `isecAlleleCounts.awk`
+
+This script takes the output of `bcftools isec -c none -n+1` on a query
+set of normalized query variants against a set of normalized database
+variants and counts the variants of different types found in different
+subsets identified by `bcftools isec -n+1`. Multiple databases can be
+used, e.g. dbSNP, 1000 Genomes, gnomAD. For my purposes, I've used
+dbSNP, 1000 Genomes phase 3 variants, gnomAD r2.1.1 exomes, and gnomAD
+r2.1.1 genomes. All VCFs should be sites-only VCFs that have been
+passed through `bcftools norm -m -any -f [ref FASTA]` and should have
+a tabix index for compatibility with `bcftools isec`.
+
+Arguments:
+
+`chrom`: (required) Chromosome being processed, this value is used
+for the first column of the output
+
+`subset`: (required) The variant subset the input represents
+(e.g. ALL for all variants, AFR_private for African-specific variants)
+
+`query`: Alias for subset, kept for backwards compatibility
+
+Output is a TSV with a header and up to 2^n+3 columns where n is
+the number of VCFs used in the `bcftools isec` call. The first
+3 columns are CHROM, Subset, and VariantType, representing the
+chromosome being processed, the variant subset the input represents,
+and the type of variant being counted (i.e. ALL, SNP, INS, DEL, MNP,
+COMPLEX, or SYMBOLIC). These variant types are identified solely by
+the contents of the REF and ALT columns.
+
+The remaining columns are simply counts for a particular subset of
+the variants defined by an n-bit bitstring. For instance, if n=5
+as in the case of comparing a query to dbSNP, 1kGP, gnomAD exomes,
+and gnomAD genomes, then the bitstring `10000` means variants unique
+to the query, while `11000` means variants common to the query and
+dbSNP but not found in 1kGP or gnomAD. This script only outputs
+a column for a given subset if at least one variant is found in that
+subset, so the output from different inputs may have different
+numbers of columns even if they're based on the same n VCFs.
+
+### `catIsecCounts.awk`
+
+This script takes the output of multiple runs of `isecAlleleCounts.awk`
+and combines them into a single file. This is slightly more complicated
+than a simple header-aware concatenation due to the variable number
+of columns mentioned above. To address this, the number of VCFs
+compared must be input (the `numfiles` argument), and all possible
+subsets are enumerated in the output in descending integral order.
+
+The output can be further aggregated to generate plots of e.g. shared
+vs. private variants, novel vs. known variants, etc.
+
+Arguments:
+
+`numfiles`: (required) Number of VCFs compared by `bcftools isec`
+
+### `summarizeQueryCounts.awk`
+
+A fairly hard-coded script just to give some command-line summaries
+of the output of `isecAlleleCounts.awk`. The output is a TSV of
+variant counts aggregated across chromosomes and certain sets of
+subsets. The second column is the total number of variants from
+the query VCF, the third column is the total number of variants
+shared between the query VCF and first database (e.g. dbSNP)
+regardless of sharing with any other databases, and subsequent
+columns are analogous for the second through fourth databases.
+Only four databases are considered in this version of the code.
+
+Arguments:
+
+`subset`: (required) Variant subset to select from the input
+
 ### `vcfToPerPopACAN.awk`
 
 This script takes a population metadata file and a VCF (nominally of
