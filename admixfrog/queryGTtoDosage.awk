@@ -9,7 +9,7 @@ BEGIN{
    if (length(header) > 0 && NR==1) {
       #Input has a header, so we need to reformat it:
       #First thing to do is eliminate the prefixed "# "
-      $0=substr($0, 3);
+      sub("#[ ]?", "", $0);
       #Now we eliminate the "[#]" prefixed to each column name:
       gsub(/\[[0-9]\]/, "");
       #And finally this is one rough way to get rid of the ":GT" for all
