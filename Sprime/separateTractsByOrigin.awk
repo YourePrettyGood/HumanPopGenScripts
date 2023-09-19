@@ -47,6 +47,7 @@ NR==1{
 }
 #For each line, evaluate the match rate criteria and classify the tract:
 NR>1{
+   outfn="";
    thresh["Neandertal","Browning"]=$cols["AltaiNea"] >= 0.6 && $cols["Denisovan"] <= 0.4;
    thresh["Denisovan","Browning"]=$cols["AltaiNea"] <= 0.3 && $cols["Denisovan"] >= 0.4;
    thresh["Ambiguous","Browning"]=$cols["AltaiNea"] > 0.3 && $cols["Denisovan"] > 0.4;
@@ -58,5 +59,7 @@ NR>1{
          outfn=prefix"_"origin[i]"_"suffix;
       };
    };
-   print > outfn;
+   if (outfn != "") {
+      print > outfn;
+   };
 }

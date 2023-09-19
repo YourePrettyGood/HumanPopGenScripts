@@ -66,7 +66,7 @@ filenum==1&&FNR>1{
 filenum==2&&FNR==1{
    for (i=1; i<=NF; i++) {
       #The entire header line gets prefixed with "# ":
-      sub("# ", "", $i);
+      sub("#[ ]?", "", $i);
       #Each column name is prefixed with it's 1-based index in brackets:
       gsub("[[0-9]+]", "", $i);
       #Each FORMAT field is suffixed with ":[tag]":
@@ -107,7 +107,7 @@ filenum==2&&FNR>1{
 filenum==3&&FNR==1{
    for (i=1; i<=NF; i++) {
       #The entire header line gets prefixed with "# ":
-      sub("# ", "", $i);
+      sub("#[ ]?", "", $i);
       #Each column name is prefixed with it's 1-based index in brackets:
       gsub("[[0-9]+]", "", $i);
       #Each FORMAT field is suffixed with ":[tag]":

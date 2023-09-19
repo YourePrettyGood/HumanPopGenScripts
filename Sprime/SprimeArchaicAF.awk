@@ -82,7 +82,7 @@ filenum==1&&FNR>1{
 # the prefixed column numbers in order to get the column names:
 filenum==2&&FNR==1{
    for (i=1; i<=NF; i++) {
-      sub("# ", "", $i);
+      sub("#[ ]?", "", $i);
       gsub("[[0-9]+]", "", $i);
       gsub(":GT", "", $i);
       querycols[i]=$i;

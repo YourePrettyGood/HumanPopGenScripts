@@ -76,7 +76,7 @@ filenum==2&&FNR==1{
    #Map column names to indices:
    for (i=1; i<=NF; i++) {
       #The entire header line gets prefixed with "# ":
-      sub("# ", "", $i);
+      sub("#[ ]?", "", $i);
       #Each column name is prefixed with it's 1-based index in brackets:
       gsub("[[0-9]+]", "", $i);
       if ($i ~ /:GT$/) {

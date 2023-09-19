@@ -16,7 +16,7 @@ BEGIN{
 NR==1{
    header="";
    for (i=1; i<=NF; i++) {
-      sub("# ", "", $i);
+      sub("#[ ]?", "", $i);
       gsub("[[0-9]+]", "", $i);
       if ($i ~ ":GT") {
          gsub(":GT", "", $i);
