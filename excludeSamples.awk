@@ -22,6 +22,15 @@ BEGIN{
 }
 FNR==1{
    filenum++;
+   #Auto-detect space-separation vs. tab-separation:
+   #This approach has a bug if the second file has a single column
+   # that contains spaces.
+   if (filenum==2) {
+      test_n_cols=split($1, test_cols, " ");
+      if (NF == 1 && test_n_cols > 1) {
+         FS=" ";
+      };
+   };
 }
 filenum==1{
    exclude[$1]=1;
