@@ -37,7 +37,7 @@ filenum==1{
 }
 filenum==2{
    if (FNR==1 && header > 0) {
-      samplecol=1;
+#      samplecol=1;
       if (length(samplecolname) > 0) {
          for (i=1; i<=NF; i++) {
             if ($i == samplecolname) {
