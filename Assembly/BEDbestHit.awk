@@ -58,6 +58,18 @@ BEGIN{
    prevend=$3;
    prevstart=$2;
    prevqname=qname;
+   #Also keep track of the alignment start and end as extra output:
+   if (!(qname,$1) in alnstart) {
+      alnstart[qname,$1]=$2;
+      alnend[qname,$1]=$3;
+   } else {
+      if ($2 < alnstart[qname,$1]) {
+         alnstart[qname,$1]=$2;
+      };
+      if ($3 > alnend[qname,$1]) {
+         alnend[qname,$1]=$3;
+      };
+   };
 }
 END{
    PROCINFO["sorted_in"]="@val_num_desc";
@@ -70,11 +82,11 @@ END{
    #Orientation is determined using majority vote, not weighting
    # by alignment length (which would probably be better).
    if (approxlen) {
-      print "Query", "Reference", "~QueryCov", "~RefCov", "Strand", "~AlnRefLen", "QueryLen", "RefLen", "+Alns", "-Alns";
+      print "Query", "Reference", "~QueryCov", "~RefCov", "Strand", "~AlnRefLen", "QueryLen", "RefLen", "+Alns", "-Alns", "AlnStart", "AlnEnd";
    } else if (unweightedorient) {
-      print "Query", "Reference", "QueryCov", "RefCov", "Strand", "AlnRefLen", "QueryLen", "RefLen", "+Alns", "-Alns";
+      print "Query", "Reference", "QueryCov", "RefCov", "Strand", "AlnRefLen", "QueryLen", "RefLen", "+Alns", "-Alns", "AlnStart", "AlnEnd";
    } else {
-      print "Query", "Reference", "QueryCov", "RefCov", "Strand", "AlnRefLen", "QueryLen", "RefLen", "+AlnLen", "-AlnLen";
+      print "Query", "Reference", "QueryCov", "RefCov", "Strand", "AlnRefLen", "QueryLen", "RefLen", "+AlnLen", "-AlnLen", "AlnStart", "AlnEnd";
    };
    for (qrmatch in alnlensum) {
       split(qrmatch, queryref, SUBSEP);
@@ -98,6 +110,6 @@ END{
       } else {
          orient="?";
       };
-      print qname, rname, qcov, rcov, orient, asum, qlen, rlen, posorient, negorient;
+      print qname, rname, qcov, rcov, orient, asum, qlen, rlen, posorient, negorient, alnstart[qname,rname], alnend[qname,rname];
    };
 }

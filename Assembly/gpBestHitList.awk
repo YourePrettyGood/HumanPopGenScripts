@@ -18,6 +18,10 @@
 #This output can then be sorted (sort -k2,2V -k3,3n) and processed along
 # with the .fai of the assembly to generate the contig and chromosome
 # order file needed by mummerplot -Q and -R.
+#2024/09/06: Added a way to omit the .gp and still output order, although
+# the value in the 3rd column of the output is then only partially ordered.
+# Specify -v "order=infer" for this, and pass <(echo "") for the .gp if
+# you don't have one.
 BEGIN{
    OFS="\t";
    filenum=0;
@@ -26,6 +30,13 @@ BEGIN{
    };
    if (length(minlen) == 0) {
       minlen=100000;
+   };
+   if (length(order) == 0) {
+      order="gp";
+   };
+   if (order != "infer" && order != "gp") {
+      print "Unknown order value "order > "/dev/stderr";
+      exit 2;
    };
 }
 FNR==1{
@@ -65,14 +76,31 @@ filenum==2&&FNR>1{
    if (!($cols["Query"] in ctgchrom) && $cols["QueryCov"] >= mincov && $cols["AlnRefLen"] >= minlen && $cols["Reference"] !~ "_") {
       ctgchrom[$cols["Query"]]=$cols["Reference"];
       ctginfstrand[$cols["Query"]]=$cols["Strand"];
+      ctgalnstart[$cols["Query"]]=$cols["AlnStart"];
    };
 }
 END{
+   #As a rough way to infer order without the .gp, we can use the start
+   # coordinates of the alignments and just sort that array by value,
+   # assigning integer indices. Note that this is only a partial ordering,
+   # as we don't also stratify/sort by chromosome. This isn't important,
+   # since we indicate to post-process with sort -k2,2V -k3,3n, and this
+   # will fix the ordering.
+   PROCINFO["sorted_in"]="@val_num_asc";
+   i=1;
+   for (ctg in ctgalnstart) {
+      ctginforder[ctg]=i;
+      i+=1;
+   };
    #Sadly, awk doesn't have a built-in version sorting order, so we just
    # output the contigs in lexicographical order.
    #You can do a proper sort afterwards with sort -k2,2V -k3,3n
    PROCINFO["sorted_in"]="@ind_str_asc";
    for (ctg in ctgchrom) {
-      print ctg, ctgchrom[ctg], ctgorder[ctg], ctgstrand[ctg], ctginfstrand[ctg];
+      if (order == "gp") {
+         print ctg, ctgchrom[ctg], ctgorder[ctg], ctgstrand[ctg], ctginfstrand[ctg];
+      } else {
+         print ctg, ctgchrom[ctg], ctginforder[ctg], ctgstrand[ctg], ctginfstrand[ctg];
+      };
    };
 }
