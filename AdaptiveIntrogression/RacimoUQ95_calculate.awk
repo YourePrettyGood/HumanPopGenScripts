@@ -247,14 +247,24 @@ NR>1{
          AC_A+=$weightcol[Aarr[i]]*$freqcol[Aarr[i],focal_allele];
          AN_A+=$weightcol[Aarr[i]];
       };
-      freqA=AC_A/AN_A;
+      if (AN_A > 0) {
+         freqA=AC_A/AN_A;
+      } else {
+         #Skip the site, since the frequency in A is unascertainable:
+         next;
+      };
       AC_B=0;
       AN_B=0;
       for (i=1; i<=nB; i++) {
          AC_B+=$weightcol[Barr[i]]*$freqcol[Barr[i],focal_allele];
          AN_B+=$weightcol[Barr[i]];
       };
-      freqB=AC_B/AN_B;
+      if (AN_B > 0) {
+         freqB=AC_B/AN_B;
+      } else {
+         #Skip the site, since the frequency in B is unascertainable:
+         next;
+      };
       if (debug > 1 && freqA < w) {
          print "DEBUG:", $cols["CHROM"], $cols["POS"], $cols["AA"], focal_allele, freqA, freqB, freqC, freqD > "/dev/stderr";
       };

@@ -134,7 +134,8 @@ filenum==2&&!/^#/{
             #If we want to keep AFs by pop rather than by superpop,
             # toggle usepop
             if (usepop && ntagnameparts == 3) {
-               pop=tagnameparts[3];
+               pop=tagparts[1];
+               sub(/^A[CN]_/, "", pop);
             } else {
                pop=tagnameparts[2];
             };
@@ -173,8 +174,12 @@ filenum==2&&!/^#/{
       printf "\t%s\t%f\t%f\t%f\t%f", Major[$1,$2,"NEA"], arcAF[$1,$2,"NEA","A"], arcAF[$1,$2,"NEA","C"], arcAF[$1,$2,"NEA","G"], arcAF[$1,$2,"NEA","T"];
       #Fill out the REF allele counts for each pop and output the line:
       for (p in pops) {
-         AC[p,$4]=AN[p]-AC[p,"S"];
-         printf "\t%i\t%f\t%f\t%f\t%f", AN[p], AC[p,"A"]/AN[p], AC[p,"C"]/AN[p], AC[p,"G"]/AN[p], AC[p,"T"]/AN[p];
+         if (AN[p] > 0) {
+            AC[p,$4]=AN[p]-AC[p,"S"];
+            printf "\t%i\t%f\t%f\t%f\t%f", AN[p], AC[p,"A"]/AN[p], AC[p,"C"]/AN[p], AC[p,"G"]/AN[p], AC[p,"T"]/AN[p];
+         } else {
+            printf "\t0\t0\t0\t0\t0";
+         };
       };
       printf "\n";
    };
