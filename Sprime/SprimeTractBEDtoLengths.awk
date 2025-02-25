@@ -15,6 +15,9 @@
 #         phased genotypes
 # header: (optional) Flag indicating whether or not to output the header
 #         line
+#2025/01/30: Fixed handling of multiple projections per tract,haplotype key.
+#            Now the length output is the sum of the projection lengths,
+#            rather than the length of the last projection encountered.
 BEGIN{
    FS="\t";
    OFS=FS;
@@ -26,7 +29,7 @@ BEGIN{
       print "across Sprime runs" > "/dev/stderr";
       exit 2;
    };
-   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", addpop);   
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", addpop);
    sub(/^[Nn][Oo]?$/, "0", addpop);
    if (length(addpop) == 0) {
       addpop=1;
@@ -35,9 +38,9 @@ BEGIN{
    #ARCARC is the count of sites homozygous for the archaic allele
    #ARC is the count of sites matching the archaic allele when phased
    #MOD is the count of sites not matching the archaic allele when phased
-   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", header);   
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", header);
    sub(/^[Nn][Oo]?$/, "0", header);
-   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", phased);   
+   sub(/^[Ff]([Aa][Ll][Ss][Ee])?$/, "0", phased);
    sub(/^[Nn][Oo]?$/, "0", phased);
    if (length(header) > 0 && header > 0) {
       if (length(phased) > 0 && phased > 0) {
@@ -84,12 +87,12 @@ FNR<NR{
    if (!(tractid in tractchrom)) {
       tractchrom[tractid]=$1;
    };
-   tractlen[tractid,id]=$3-$2;
-   tracthet[tractid,id]=ArcMod;
-   tracthom[tractid,id]=ArcArc;
+   tractlen[tractid,id]+=$3-$2;
+   tracthet[tractid,id]+=ArcMod;
+   tracthom[tractid,id]+=ArcArc;
    if (length(phased) > 0) {
-      tractarc[tractid,id]=Arc;
-      tractmod[tractid,id]=Mod;
+      tractarc[tractid,id]+=Arc;
+      tractmod[tractid,id]+=Mod;
    };
    if (!(tractid in tracts)) {
       tracts[tractid]=++ntract;

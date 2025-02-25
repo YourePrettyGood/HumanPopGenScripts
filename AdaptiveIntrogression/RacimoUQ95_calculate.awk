@@ -23,9 +23,19 @@ BEGIN{
       print "A is missing, please specify a comma-separated list of pops you want to use as the outgroup A. Quitting." > "/dev/stderr";
       exit 2;
    };
+   #Compose the hash of pops in A, possibly accounting for wildcards, which triggers regex matching:
+   wildcards=0;
    nA=split(A, Aarr, ",");
    for (i=1; i<=nA; i++) {
-      Alist[Aarr[i]]=i;
+      if (Aarr[i] ~ "[.]") {
+         popregex=Aarr[i];
+         sub("[.]", ".+", popregex);
+         Alist[popregex]=i;
+         Aarr[i]=popregex;
+         wildcards=1;
+      } else {
+         Alist[Aarr[i]]=i;
+      };
    };
    if (length(B) == 0) {
       print "B is missing, please specify a single population to use as target B. Quitting." > "/dev/stderr";
@@ -33,10 +43,27 @@ BEGIN{
    };
    nB=split(B, Barr, ",");
    for (i=1; i<=nB; i++) {
-      Blist[Barr[i]]=i;
-      if (Barr[i] in Alist) {
-         print "B ("Barr[i]") overlaps A ("A"), did you misspecify A? Quitting." > "/dev/stderr";
-         exit 2;
+      if (Barr[i] ~ "[.]") {
+         popregex=Barr[i];
+         sub("[.]", ".+", popregex);
+         Blist[popregex]=i;
+         Barr[i]=popregex;
+         wildcards=1;
+      } else {
+         Blist[Barr[i]]=i;
+      };
+      if (wildcards > 0) {
+         for (Aregex in Alist) {
+            if (Barr[i] ~ Aregex) {
+               print "B ("Barr[i]") overlaps A ("A"), did you misspecify A? Quitting." > "/dev/stderr";
+               exit 2;
+            };
+         };
+      } else {
+         if (Barr[i] in Alist) {
+            print "B ("Barr[i]") overlaps A ("A"), did you misspecify A? Quitting." > "/dev/stderr";
+            exit 2;
+         };
       };
    };
    if (length(C) == 0) {
@@ -138,8 +165,22 @@ NR==1{
    };
    Amissing=0;
    for (i=1; i<=nA; i++) {
-      if (!(Aarr[i] in pops)) {
-         Amissing+=1;
+      if (wildcards > 0) {
+         found=0;
+         for (p in pops) {
+            if (p ~ Aarr[i]) {
+               found=1;
+               Apops[nApops+1]=p;
+               nApops+=1;
+            };
+         };
+         if (found == 0) {
+            Amissing+=1;
+         };
+      } else {
+         if (!(Aarr[i] in pops)) {
+            Amissing+=1;
+         };
       };
    };
    if (Amissing > 0) {
@@ -148,8 +189,22 @@ NR==1{
    };
    Bmissing=0;
    for (i=1; i<=nB; i++) {
-      if (!(Barr[i] in pops)) {
-         Bmissing+=1;
+      if (wildcards > 0) {
+         found=0;
+         for (p in pops) {
+            if (p ~ Barr[i]) {
+               found=1;
+               Bpops[nBpops+1]=p;
+               nBpops+=1;
+            };
+         };
+         if (found == 0) {
+            Bmissing+=1;
+         };
+      } else {
+         if (!(Barr[i] in pops)) {
+            Bmissing+=1;
+         };
       };
    };
    if (Bmissing > 0) {
@@ -243,9 +298,16 @@ NR>1{
       # the AF of the composite outgroup if we handled it monolithically.
       AC_A=0;
       AN_A=0;
-      for (i=1; i<=nA; i++) {
-         AC_A+=$weightcol[Aarr[i]]*$freqcol[Aarr[i],focal_allele];
-         AN_A+=$weightcol[Aarr[i]];
+      if (wildcards > 0) {
+         for (i=1; i<=nApops; i++) {
+            AC_A+=$weightcol[Apops[i]]*$freqcol[Apops[i],focal_allele];
+            AN_A+=$weightcol[Apops[i]];
+         };
+      } else {
+         for (i=1; i<=nA; i++) {
+            AC_A+=$weightcol[Aarr[i]]*$freqcol[Aarr[i],focal_allele];
+            AN_A+=$weightcol[Aarr[i]];
+         };
       };
       if (AN_A > 0) {
          freqA=AC_A/AN_A;
@@ -255,9 +317,16 @@ NR>1{
       };
       AC_B=0;
       AN_B=0;
-      for (i=1; i<=nB; i++) {
-         AC_B+=$weightcol[Barr[i]]*$freqcol[Barr[i],focal_allele];
-         AN_B+=$weightcol[Barr[i]];
+      if (wildcards > 0) {
+         for (i=1; i<=nBpops; i++) {
+            AC_B+=$weightcol[Bpops[i]]*$freqcol[Bpops[i],focal_allele];
+            AN_B+=$weightcol[Bpops[i]];
+         };
+      } else {
+         for (i=1; i<=nB; i++) {
+            AC_B+=$weightcol[Barr[i]]*$freqcol[Barr[i],focal_allele];
+            AN_B+=$weightcol[Barr[i]];
+         };
       };
       if (AN_B > 0) {
          freqB=AC_B/AN_B;
