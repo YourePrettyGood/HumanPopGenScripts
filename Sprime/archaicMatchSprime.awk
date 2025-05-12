@@ -16,10 +16,16 @@
 # particular sample IDs: AltaiNeandertal, Vindija33.19, Chagyrskaya-Phalanx,
 # and Denisovan
 #Options:
-# spop: (required) Name of the Sprime target population (i.e. not the outgroup)
-#                  This value is only used to make a unique Tract ID column.
-# gtfmt:(optional) File format of the source of the archaic genotypes
-#                  Possible values: "vcf", "query" (default: vcf)
+# spop: (required)   Name of the Sprime target population (i.e. not the outgroup)
+#                    This value is only used to make a unique Tract ID column.
+# gtfmt:(optional)   File format of the source of the archaic genotypes
+#                    Possible values: "vcf", "query" (default: vcf)
+# groups: (optional) Comma-separated list of archaic hominin groups to check
+#                    Default: Denisovan,Neandertal
+# arcs: (optional)   Comma-separated list of IDs of the archaics to check
+#                    Default: AltaiNeandertal,Vindija33.19,Chagyrskaya-Phalanx
+# short: (optional)  Comma-separated list of short names of the archaics to check
+#                    Default: Altai,Vindija,Chagyrskaya
 BEGIN{
    FS="\t";
    OFS=FS;
@@ -33,18 +39,39 @@ BEGIN{
    if (length(gtfmt) == 0 || gtfmt != "query") {
       gtfmt="vcf";
    };
+   if (length(groups) == 0) {
+      groups="Neandertal,Denisovan";
+   };
+   n_arcgroups=split(groups, arcgroups, ",");
+   if (length(arcs) == 0) {
+      arcs="AltaiNeandertal,Vindija33.19,Chagyrskaya-Phalanx";
+   };
+   n_arcs=split(arcs, arcindivs, ",");
+   if (length(short) == 0) {
+      short="Altai,Vindija,Chagyrskaya";
+   };
+   n_short=split(short, arcshortnames, ",");
+   if (n_arcs != n_short) {
+      print "Number of archaic hominin samples to check (length of list arcs) does not match number of short names for them (length of list short). Quitting." >> "/dev/stderr";
+      exit 3;
+   };
+   #Keep track of which file we're on:
    filenum=0;
+   #Output order:
    PROCINFO["sorted_in"]="@ind_num_asc";
 }
+#Keep track of which file we're on:
 FNR==1{
    filenum++;
 }
+#Keep track of processing time and metadata column names:
 filenum==1&&FNR==1{
    f1start=systime();
    for (i=1; i<=NF; i++) {
       metacols[$i]=i;
    };
 }
+#Make a map from archaic hominin sample IDs to archaic hominin groups:
 filenum==1&&FNR>1{
    region[$metacols["Sample"]]=$metacols["Region"];
 }
@@ -53,26 +80,40 @@ filenum==1&&FNR>1{
 filenum==2&&/^#( \[1])?CHROM/{
    f2start=systime();
    print "Processing archaic metadata file took "f2start-f1start" seconds" > "/dev/stderr";
+   #Map the VCF/query sample columns to their archaic hominin IDs and groups:
    if (gtfmt == "query") {
       for (i=2; i<=NF; i++) {
          sub("[[0-9]+]", "", $i);
          sub(":GT", "", $i);
-         if (region[$i] == "Denisovan" || region[$i] == "Neandertal") {
-            useindiv[i]=region[$i];
-            indiv[i]=$i;
+         for (j=1; j<=n_arcgroups; j++) {
+            if (region[$i] == arcgroups[j]) {
+               useindiv[i]=region[$i];
+               indiv[i]=$i;
+            };
          };
+#         if (region[$i] == "Denisovan" || region[$i] == "Neandertal") {
+#            useindiv[i]=region[$i];
+#            indiv[i]=$i;
+#         };
       };
    } else {
       for (i=10; i<=NF; i++) {
-         if (region[$i] == "Denisovan" || region[$i] == "Neandertal") {
-            useindiv[i]=region[$i];
-            indiv[i]=$i;
+         for (j=1; j<=n_arcgroups; j++) {
+            if (region[$i] == arcgroups[j]) {
+               useindiv[i]=region[$i];
+               indiv[i]=$i;
+            };
          };
+#         if (region[$i] == "Denisovan" || region[$i] == "Neandertal") {
+#            useindiv[i]=region[$i];
+#            indiv[i]=$i;
+#         };
       };
    };
 }
 filenum==2&&!/^#/{
    n_vcf_records++;
+   #Store the alleles found in count form for the different archaic hominins at each site:
    if (gtfmt == "query") {
       sitekey=$1;
       for (i in useindiv) {
@@ -142,73 +183,127 @@ filenum==2&&!/^#/{
 filenum==3&&FNR==1{
    f3start=systime();
    print "Processing archaic VCF took "f3start-f2start" seconds, average "(f3start-f2start)/n_vcf_records" seconds per record" > "/dev/stderr";
+   #Store the column names from the Sprime .score file:
    for (i=1; i<=NF; i++) {
       sprimecols[$i]=i;
    };
-   print $0, "TractID", "NeandertalMatch", "DenisovanMatch", "NeandertalAlleles", "DenisovanAlleles", "AltaiMatch", "VindijaMatch", "ChagyrskayaMatch";
+   #Compose the extra column names for the output:
+   archeader="TractID";
+   for (i=1; i<=n_arcgroups; i++) {
+      archeader=archeader OFS arcgroups[i]"Match";
+   };
+   for (i=1; i<=n_arcgroups; i++) {
+      archeader=archeader OFS arcgroups[i]"Alleles";
+   };
+   for (i=1; i<=n_short; i++) {
+      archeader=archeader OFS arcshortnames[i]"Match";
+   };
+   print $0, archeader;
+#   print $0, "TractID", "NeandertalMatch", "DenisovanMatch", "NeandertalAlleles", "DenisovanAlleles", "AltaiMatch", "VindijaMatch", "ChagyrskayaMatch";
 }
 filenum==3&&FNR>1{
    n_score_records++;
+   #Match the Sprime allele at a given site in a tract to the archaic hominins to detect matches, mismatches, or missingness:
    tractid=spop"_"$sprimecols["CHROM"]"_"$sprimecols["SEGMENT"];
    sitekey=$sprimecols["CHROM"]":"$sprimecols["POS"];
    split($sprimecols["ALT"], alleles, ",");
    alleles[0]=$sprimecols["REF"];
    sprimeallele=alleles[$sprimecols["ALLELE"]];
-   Denisovan="missing";
-   Neandertal="missing";
-   Altai="missing";
-   Vindija="missing";
-   Chagyrskaya="missing";
-   Denisovanallelestr="Unk";
-   Neandertalallelestr="Unk";
-   if ((sitekey,"Denisovan") in arcalleles) {
-      Denisovan="mismatch";
-      Denisovanallelestr=arcalleles[sitekey,"Denisovan"];
-      split(arcalleles[sitekey,"Denisovan"], denalleles, ",");
-      for (a in denalleles) {
-         if (denalleles[a] == sprimeallele) {
-            Denisovan="match";
+   #Do group-level matching and keep track of the set of alleles present across multiple samples in a group:
+   for (i=1; i<=n_arcgroups; i++) {
+      groupstate[arcgroups[i]]="missing";
+      groupallelestr[arcgroups[i]]="Unk";
+      if ((sitekey,arcgroups[i]) in arcalleles) {
+         groupstate[arcgroups[i]]="mismatch";
+         groupallelestr[arcgroups[i]]=arcalleles[sitekey,arcgroups[i]];
+         split(arcalleles[sitekey,arcgroups[i]], arcgroupalleles, ",");
+         for (a in arcgroupalleles) {
+            if (arcgroupalleles[a] == sprimeallele) {
+               groupstate[arcgroups[i]]="match";
+            };
          };
       };
    };
-   if ((sitekey,"Neandertal") in arcalleles) {
-      Neandertal="mismatch";
-      Neandertalallelestr=arcalleles[sitekey,"Neandertal"];
-      split(arcalleles[sitekey,"Neandertal"], neandalleles, ",");
-      for (a in neandalleles) {
-         if (neandalleles[a] == sprimeallele) {
-            Neandertal="match";
+   #Do sample-level matching:
+   for (i=1; i<=n_arcs; i++) {
+      indivstate[arcindivs[i]]="missing";
+      if ((sitekey,arcindivs[i]) in arcalleles) {
+         indivstate[arcindivs[i]]="mismatch";
+         split(arcalleles[sitekey,arcindivs[i]], arcindivalleles, ",");
+         for (a in arcindivalleles) {
+            if (arcindivalleles[a] == sprimeallele) {
+               indivstate[arcindivs[i]]="match";
+            };
          };
       };
    };
-   if ((sitekey,"AltaiNeandertal") in arcalleles) {
-      Altai="mismatch";
-      split(arcalleles[sitekey,"AltaiNeandertal"], altaialleles, ",");
-      for (a in altaialleles) {
-         if (altaialleles[a] == sprimeallele) {
-            Altai="match";
-         };
-      };
+#   Denisovan="missing";
+#   Neandertal="missing";
+#   Altai="missing";
+#   Vindija="missing";
+#   Chagyrskaya="missing";
+#   Denisovanallelestr="Unk";
+#   Neandertalallelestr="Unk";
+#   if ((sitekey,"Denisovan") in arcalleles) {
+#      Denisovan="mismatch";
+#      Denisovanallelestr=arcalleles[sitekey,"Denisovan"];
+#      split(arcalleles[sitekey,"Denisovan"], denalleles, ",");
+#      for (a in denalleles) {
+#         if (denalleles[a] == sprimeallele) {
+#            Denisovan="match";
+#         };
+#      };
+#   };
+#   if ((sitekey,"Neandertal") in arcalleles) {
+#      Neandertal="mismatch";
+#      Neandertalallelestr=arcalleles[sitekey,"Neandertal"];
+#      split(arcalleles[sitekey,"Neandertal"], neandalleles, ",");
+#      for (a in neandalleles) {
+#         if (neandalleles[a] == sprimeallele) {
+#            Neandertal="match";
+#         };
+#      };
+#   };
+#   if ((sitekey,"AltaiNeandertal") in arcalleles) {
+#      Altai="mismatch";
+#      split(arcalleles[sitekey,"AltaiNeandertal"], altaialleles, ",");
+#      for (a in altaialleles) {
+#         if (altaialleles[a] == sprimeallele) {
+#            Altai="match";
+#         };
+#      };
+#   };
+#   if ((sitekey,"Vindija33.19") in arcalleles) {
+#      Vindija="mismatch";
+#      split(arcalleles[sitekey,"Vindija33.19"], vindijaalleles, ",");
+#      for (a in vindijaalleles) {
+#         if (vindijaalleles[a] == sprimeallele) {
+#            Vindija="match";
+#         };
+#      };
+#   };
+#   if ((sitekey,"Chagyrskaya-Phalanx") in arcalleles) {
+#      Chagyrskaya="mismatch";
+#      split(arcalleles[sitekey,"Chagyrskaya-Phalanx"], chagyrskayaalleles, ",");
+#      for (a in chagyrskayaalleles) {
+#         if (chagyrskayaalleles[a] == sprimeallele) {
+#            Chagyrskaya="match";
+#         };
+#      };
+#   };
+   #Print the output line for a match, mismatch, or missing site:
+   arcout=tractid;
+   for (i=1; i<=n_arcgroups; i++) {
+      arcout=arcout OFS groupstate[arcgroups[i]];
    };
-   if ((sitekey,"Vindija33.19") in arcalleles) {
-      Vindija="mismatch";
-      split(arcalleles[sitekey,"Vindija33.19"], vindijaalleles, ",");
-      for (a in vindijaalleles) {
-         if (vindijaalleles[a] == sprimeallele) {
-            Vindija="match";
-         };
-      };
+   for (i=1; i<=n_arcgroups; i++) {
+      arcout=arcout OFS groupallelestr[arcgroups[i]];
    };
-   if ((sitekey,"Chagyrskaya-Phalanx") in arcalleles) {
-      Chagyrskaya="mismatch";
-      split(arcalleles[sitekey,"Chagyrskaya-Phalanx"], chagyrskayaalleles, ",");
-      for (a in chagyrskayaalleles) {
-         if (chagyrskayaalleles[a] == sprimeallele) {
-            Chagyrskaya="match";
-         };
-      };
+   for (i=1; i<=n_arcs; i++) {
+      arcout=arcout OFS indivstate[arcindivs[i]];
    };
-   print $0, tractid, Neandertal, Denisovan, Neandertalallelestr, Denisovanallelestr, Altai, Vindija, Chagyrskaya;
+#   print $0, tractid, Neandertal, Denisovan, Neandertalallelestr, Denisovanallelestr, Altai, Vindija, Chagyrskaya;
+   print $0, arcout;
 }
 END{
    end=systime();
