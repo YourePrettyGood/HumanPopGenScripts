@@ -9,6 +9,8 @@
 # in either the "arc" or "modern" argument lists.
 #Required arguments:
 # prefix: Prefix for the VCFs to be output by bcftools +split
+# popcol: Column name for population IDs
+#         (default: Region)
 # arc:    Comma-separated list of population IDs of archaic samples
 #         in the sample metadata file provided
 # modern: Comma-separated list of population IDs of modern samples
@@ -19,6 +21,9 @@ BEGIN{
    if (length(prefix) == 0) {
       print "No prefix for output VCFs provided. Quitting." > "/dev/stderr";
       exit 2;
+   };
+   if (length(popcol) == 0) {
+      popcol="Region";
    };
    if (length(arc) == 0) {
       print "No arc provided, please provide a comma-separated list of population names that should be mapped to the archaic output VCF. Quitting." > "/dev/stderr";
@@ -37,10 +42,19 @@ BEGIN{
       modernhash[modernarr[i]]=i;
    };
 }
+NR==1{
+   for (i=1; i<=NF; i++) {
+      cols[$i]=i;
+   };
+   if (!(popcol in cols)) {
+      print "popcol ("popcol") not found in metadata file header, cannot proceed." > "/dev/stderr";
+      exit 5;
+   };
+}
 NR>1{
-   if ($2 in archash) {
-      print $1, "-", prefix"_archaic.vcf.gz";
-   } else if ($2 in modernhash) {
-      print $1, "-", prefix"_modern.vcf.gz";
+   if ($cols[popcol] in archash) {
+      print $cols["SampleID"], "-", prefix"_archaic.vcf.gz";
+   } else if ($cols[popcol] in modernhash) {
+      print $cols["SampleID"], "-", prefix"_modern.vcf.gz";
    };
 }
