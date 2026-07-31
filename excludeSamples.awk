@@ -8,6 +8,9 @@
 # and sample lines are retained if their ID is not in the exclude list.
 BEGIN{
    FS="\t";
+   #Note: This doesn't actually convert input spaces to output tabs if
+   # spaces are auto-detected, since we use print; instead of print $0;
+   # below.
    OFS=FS;
    if (length(header) == 0) {
       header=0;
@@ -39,8 +42,13 @@ filenum==2{
    if (FNR==1 && header > 0) {
 #      samplecol=1;
       if (length(samplecolname) > 0) {
-         for (i=1; i<=NF; i++) {
-            if ($i == samplecolname) {
+         #Per https://ftp.gnu.org/old-gnu/Manuals/gawk-3.1.1/html_node/Field-Splitting-Summary.html#Field%20Splitting%20Summary
+         # changing FS does not cause a reparse of the same line for
+         # POSIX-compliant awk implementations, so we need to do the
+         # reparse explicitly ourselves:
+         reparse_NF=split($0, reparse_cols, FS);
+         for (i=1; i<=reparse_NF; i++) {
+            if (reparse_cols[i] == samplecolname) {
                samplecol=i;
             };
          };
