@@ -39,10 +39,11 @@ NR>1{
    tractcounts[hapchrom]++;
    #The TractID for ArchaicSeeker2 needs to include the haplotype ID:
    tractid=pop"_"$segcols["Contig"]"_"tractcounts[hapchrom]"_"$segcols["ID"];
-   #Store the start, end, tract ID, and ArchaicSeeker2 HMM state:
+   #Store the start, end, tract ID, ArchaicSeeker2 HMM state, and Haplotype ID:
    tractstart=$segcols["Start(bp)"];
    tractend=$segcols["End(bp)"];
    ASstate=$segcols["BestMatchedPop"];
+   hapid=$segcols["ID"];
    #Output the tract:
-   print $segcols["Contig"], tractstart, tractend, "TractID="tractid";ASSTATE="ASstate, ".", "+";
+   print $segcols["Contig"], tractstart, tractend, "TractID="tractid";ASSTATE="ASstate";HapID="hapid, ".", "+";
 }
