@@ -9,6 +9,8 @@ BEGIN{
 !/^#/{
    if ($3 == "gene") {
       #Parse the tag-value pairs for gene_name and gene_biotype:
+      id="";
+      type="";
       n=split($9, a, ";");
       for (i=1; i<=n; i++) {
          m=split(a[i], b, "=");
@@ -21,6 +23,7 @@ BEGIN{
       print $1, $4-1, $5, "FeatureType=gene;ID="id";Biotype="type;
    } else if ($3 == "exon") {
       #Parse the tag-value pairs for gene (name of the gene the exon belongs to):
+      id="";
       n=split($9, a, ";");
       for (i=1; i<=n; i++) {
          m=split(a[i], b, "=");
